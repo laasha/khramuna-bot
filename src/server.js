@@ -268,8 +268,6 @@ app.post('/webhook', async (req, res) => {
   console.log('[Webhook Incoming POST]:', JSON.stringify(body));
 
   if (body.object === 'page') {
-    res.status(200).send('EVENT_RECEIVED');
-
     try {
       for (const entry of body.entry || []) {
         for (const webhookEvent of entry.messaging || []) {
@@ -385,8 +383,9 @@ app.post('/webhook', async (req, res) => {
     } catch (err) {
       console.error('[Webhook Processing Error]:', err);
     }
+    return res.status(200).send('EVENT_RECEIVED');
   } else {
-    res.sendStatus(404);
+    return res.sendStatus(404);
   }
 });
 

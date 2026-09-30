@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const DATA_DIR = path.resolve(__dirname, '../../data');
+const DATA_DIR = process.env.VERCEL ? '/tmp/khramuna-data' : path.resolve(__dirname, '../../data');
 const ORDERS_FILE = path.join(DATA_DIR, 'orders.json');
 const SESSIONS_FILE = path.join(DATA_DIR, 'sessions.json');
 
