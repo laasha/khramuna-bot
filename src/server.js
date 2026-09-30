@@ -298,7 +298,7 @@ app.post('/webhook', async (req, res) => {
                 const session = getSession(senderPsid);
                 updateSession(senderPsid, 'user', `ავირჩიე შეკვეთა: ${product.name}`);
 
-                const confirmText = `შესანიშნავი არჩევანია! 🐾\nთქვენი არჩევანი: ${product.name} — ${product.price}₾.\n\nგთხოვთ მომწეროთ მიტანის ზუსტი მისამართი და ტელეფონის ნომერი კურიერისთვის 📍📞`;
+                const confirmText = `შესანიშნავი არჩევანია! 🐾\nთქვენი არჩევანი: ${product.name} — ${product.price}₾.\n\nგთხოვთ მომწეროთ მიტანის მისამართი და ტელეფონის ნომერი, კურიერს გავატანთ და ხვალვე თქვენთან იქნება 📍📞`;
                 await sendMessengerMessage(senderPsid, confirmText);
                 updateSession(senderPsid, 'assistant', confirmText);
                 continue;
@@ -310,11 +310,8 @@ app.post('/webhook', async (req, res) => {
               const product = PRODUCT_MAP[productKey];
 
               if (product) {
-                const infoText = `🐾 ${product.name}\n\n${product.desc}\nფასი: ${product.price}₾\n\nგსურთ შეკვეთა? 🐶`;
-                await sendQuickReplies(senderPsid, infoText, [
-                  { title: `🛒 შეკვეთა (${product.price}₾)`, payload: `ORDER_${productKey}` },
-                  { title: '📋 სხვა პროდუქტები', payload: 'SHOW_CATALOG' },
-                ]);
+                const infoText = `🐾 ${product.name}\n\n${product.desc}\nფასი: ${product.price}₾\n\nგსურთ შეკვეთის გაფორმება? 🐶`;
+                await sendMessengerMessage(senderPsid, infoText);
                 continue;
               }
             }
@@ -329,11 +326,18 @@ app.post('/webhook', async (req, res) => {
             const session = getSession(senderPsid);
             updateSession(senderPsid, 'user', userText);
 
-            // Check if user is asking to see the catalog / prices
-            const catalogTriggers = ['კატალოგი', 'ფასები', 'რა გაქვთ', 'პროდუქტები', 'მენიუ'];
-            const wantsCatalog = catalogTriggers.some((kw) => userText.toLowerCase().includes(kw)) && userText.length < 25;
+            // Fast-path: Common courtesies (instant, warm, human, zero API overhead)
+            const cleanText = userText.toLowerCase().replace(/[.,!?;:()]/g, '').trim();
+            const thanksList = ['მადლობა', 'დიდი მადლობა', 'მადლობთ', 'გაიხარე', 'გაიხარეთ', 'მადლობა დიდი'];
+            if (thanksList.includes(cleanText)) {
+              const thankReply = 'არაფრის, გაახარეთ თქვენი ცუგა! ❤️ თუ რამე დაგჭირდეთ, ნებისმიერ დროს მომწერეთ.';
+              await sendMessengerMessage(senderPsid, thankReply);
+              updateSession(senderPsid, 'assistant', thankReply);
+              continue;
+            }
 
-            if (wantsCatalog) {
+            // Only show interactive catalog carousel if specifically asked
+            if (cleanText === 'კატალოგი' || cleanText === 'მენიუ') {
               await sendMessengerMessage(senderPsid, 'გთავაზობთ ჩვენს 100% ნატურალურ ასორტიმენტს: 🐾');
               await sendProductCatalog(senderPsid);
               updateSession(senderPsid, 'assistant', 'გაიგზავნა პროდუქციის კატალოგი');
@@ -352,12 +356,12 @@ app.post('/webhook', async (req, res) => {
               await saveOrderToGoogleSheet(order);
             }
 
-            console.log('[Messenger] Sending reply back to Facebook...');
-            // Send reply with convenient quick buttons
-            await sendQuickReplies(senderPsid, aiResponse.replyText, [
-              { title: '🎁 სრული ნაკრები (49.50₾)', payload: 'ORDER_full_pack' },
-              { title: '📋 კატალოგი', payload: 'SHOW_CATALOG' },
-            ]);
+            // Simulate natural human typing pause
+            await new Promise((resolve) => setTimeout(resolve, 1200));
+
+            console.log('[Messenger] Sending natural reply back to Facebook...');
+            // Send pure, natural human message without robotic quick-reply buttons
+            await sendMessengerMessage(senderPsid, aiResponse.replyText);
             updateSession(senderPsid, 'assistant', aiResponse.replyText);
           }
         }
