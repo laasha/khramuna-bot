@@ -1,6 +1,7 @@
 import catalog from '../config/catalog.json' with { type: 'json' };
 
-const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+const GEMINI_API_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3-flash-preview:generateContent';
+const GEMINI_BACKUP_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
 /**
  * System instruction defining the Khramuna Founder/Consultant persona and natural conversation.
@@ -71,7 +72,8 @@ ${JSON.stringify(catalog, null, 2)}
  * Helper to call Gemini API with single retry on 429/503.
  */
 async function callGemini(apiKey, contents, attempt = 1) {
-  const res = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+  const targetUrl = attempt === 1 ? GEMINI_API_URL : GEMINI_BACKUP_URL;
+  const res = await fetch(`${targetUrl}?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
@@ -90,9 +92,9 @@ async function callGemini(apiKey, contents, attempt = 1) {
     const errText = await res.text();
     console.error(`[AI] Gemini API HTTP error (attempt ${attempt}):`, res.status, errText);
 
-    // If rate-limited or temporarily unavailable, retry once after 1.5 seconds
-    if ((res.status === 429 || res.status === 503) && attempt === 1) {
-      console.log('[AI] Retrying Gemini after 1500ms...');
+    // If rate-limited or temporarily unavailable, retry once after 1.5 seconds with backup model
+    if ((res.status === 429 || res.status === 503 || res.status === 404) && attempt === 1) {
+      console.log('[AI] Retrying with backup Gemini model after 1500ms...');
       await new Promise((resolve) => setTimeout(resolve, 1500));
       return callGemini(apiKey, contents, 2);
     }
