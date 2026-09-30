@@ -396,6 +396,7 @@ app.post('/webhook', async (req, res) => {
               await handleCommentAction({
                 commentId,
                 commenterName,
+                commentText: val.message || '',
               });
             }
           }

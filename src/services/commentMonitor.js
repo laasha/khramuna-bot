@@ -1,5 +1,6 @@
 import { replyToComment, sendPrivateReply } from './facebook.js';
 import { isCommentReplied, markCommentReplied } from './storage.js';
+import { generateCommentReplies } from './ai.js';
 
 const PAGE_ID = '928195650386088';
 
@@ -7,7 +8,7 @@ const PAGE_ID = '928195650386088';
  * Handles responding to a user comment both publicly and via private Messenger message.
  * Guaranteed to never reply more than once.
  */
-export async function handleCommentAction({ commentId, commenterName = '' }) {
+export async function handleCommentAction({ commentId, commenterName = '', commentText = '' }) {
   if (!commentId) return;
 
   // Deduplication check
@@ -19,24 +20,14 @@ export async function handleCommentAction({ commentId, commenterName = '' }) {
   markCommentReplied(commentId);
 
   try {
-    // 1. Clean, polite and natural public comment reply in Georgian
-    const namePart = commenterName && commenterName.trim().length > 0 ? ` ${commenterName}` : '';
-    const publicReply = `გამარჯობა${namePart}! 🐾 მოგწერეთ პირადში.`;
+    // Generate tailored, contextual replies via AI
+    const { publicReply, privateReply } = await generateCommentReplies({
+      commenterName,
+      commentText,
+    });
 
     console.log(`[Comment Service] Sending public reply to comment ${commentId}: "${publicReply}"`);
     await replyToComment(commentId, publicReply);
-
-    // 2. Direct Messenger message with pricing & catalog
-    const privateReply = `გამარჯობა! 🐾 მადლობა დაინტერესებისთვის.
-
-ჩვენი 100% ნატურალური სასუსნავებია:
-1. დრაკონის თათები (100გ) — 18₾
-2. ღრუბელი (50გ) — 15₾
-3. სუპერ-კუბები (80გ) — 17₾
-4. ჯადოსნური პუდრა (40გ) — 12₾
-(ან ოთხივე ერთად ნაკრებში — 49.50₾).
-
-რომელი გამოგიგზავნოთ? 🐶`;
 
     console.log(`[Comment Service] Sending private reply to comment ${commentId}`);
     await sendPrivateReply(commentId, privateReply);

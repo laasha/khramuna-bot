@@ -45,9 +45,18 @@ function buildSystemPrompt() {
    - ლეკვი, წვრთნა, დაბალკალორიული -> "ღრუბელი" (ადვილად იმტვრევა პატარა ნაჭრებად).
    - კატები -> თუ კატაზე გკითხეს: "ჯადოსნური პუდრა" (ფხვნილი) და "სუპერ-კუბები" (ღვიძლი) კატებისთვისაც საოცრად გემრიელია და მადას აღვიძებს 🐱
 
-5. შეკვეთის გაფორმება და მიტანის პირობები (Zero Friction):
+5. შეკვეთის გაფორმება და გადახდა (Zero Friction):
    - მიტანის პირობები: თბილისში 24-48 საათში. 45₾-ზე ზემოთ (ან სრულ ნაკრებზე) მიტანა უფასოა! 45₾-მდე შეკვეთაზე მიტანა 5₾.
-   - გადახდა: ნაღდი ანგარიშსწორება კურიერთან ჩაბარებისას, ან საბანკო ჩარიცხვა.
+   - გადახდის ფორმები:
+     1. ნაღდი ანგარიშსწორება კურიერთან ჩაბარებისას.
+     2. საბანკო გადარიცხვა ანგარიშზე (TBC ან BOG).
+   - როცა კლიენტი ითხოვს რეკვიზიტებს ან ჩარიცხვით გადახდას, მიაწოდე ზუსტად:
+     "საბანკო გადარიცხვისთვის შეგიძლიათ გამოიყენოთ ჩვენი ანგარიშები:
+     🏦 TBC: GE05TB7845445061100039
+     🏦 BOG (საქართველოს ბანკი): GE12BG0000000584788956
+     მიმღები: ლაშა ხიჯაკაძე
+     დანიშნულებაში შეგიძლიათ მიუთითოთ თქვენი ტელეფონის ნომერი ან „ხრამუნა“.
+     (ან შეგიძლიათ კურიერს პირდაპირ ნაღდი ფულით გადაუხადოთ ჩაბარებისას, როგორც თქვენთვის უფრო მოსახერხებელია 😊)"
    - როცა კლიენტი ირჩევს პროდუქტს, მარტივად დააზუსტე მიტანა:
      "შესანიშნავი არჩევანია! 🐾 მომწერეთ მიტანის მისამართი და საკონტაქტო ნომერი, კურიერს გავატანთ და ხვალვე თქვენთან იქნება."
    - როცა მისამართიც და ნომერიც ცნობილია:
@@ -176,3 +185,70 @@ export async function generateBotResponse(userMessage, sessionHistory = []) {
     };
   }
 }
+
+/**
+ * Generates tailored public and private replies for a Facebook post comment.
+ */
+export async function generateCommentReplies({ commenterName = '', commentText = '' }) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  const nameGreeting = commenterName ? `გამარჯობა ${commenterName}!` : 'გამარჯობა!';
+
+  const fallback = {
+    publicReply: `${nameGreeting} 🐾 დეტალები და ფასები პირადში მოგწერეთ.`,
+    privateReply: `${nameGreeting} 🐾 მადლობა დაინტერესებისთვის. გვაქვს 4 სახეობის ნატურალური სასუსნავი: თათები (18₾), ღრუბელი (15₾), კუბები (17₾) და პუდრა (12₾), ან სრული ნაკრები (49.50₾). რომელი ჯიშის ცუგა გყავთ? 🐶`,
+  };
+
+  if (!apiKey || !commentText.trim()) {
+    return fallback;
+  }
+
+  const prompt = `
+შენ ხარ "ხრამუნას" (ნატურალური სასუსნავები ძაღლებისთვის) კონსულტანტი. მომხმარებელმა Facebook პოსტის ქვეშ დატოვა კომენტარი.
+მომხმარებელი: "${commenterName}"
+კომენტარი: "${commentText}"
+
+პროდუქცია:
+• დრაკონის თათები (ქათმის ფეხი, კბილებისთვის/კოლაგენი) — 18₾
+• ღრუბელი (საქონლის ფილტვი, მსუბუქი/წვრთნისთვის/ლეკვებისთვის) — 15₾
+• სუპერ-კუბები (საქონლის ღვიძლი, ვიტამინები) — 17₾
+• ჯადოსნური პუდრა (ხორცის ფხვნილი უმადობისას) — 12₾
+(სრული ნაკრები ოთხივე ერთად — 49.50₾).
+
+მოამზადე 2 ტექსტი:
+1. "publicReply": მოკლე, თბილი საჯარო პასუხი კომენტარზე (1 წინადადება). გაითვალისწინე მისი კონკრეტული კითხვა/ჯიში და აღნიშნე, რომ პირადშიც მოწერე ❤️
+2. "privateReply": პირად მესენჯერში გასაგზავნი თბილი შეტყობინება (2-3 მოკლე წინადადება), რომელიც ზუსტად ეხმიანება მის კომენტარს, ურჩევს შესაბამის პროდუქტს და ეკითხება აზრს.
+
+დააბრუნე JSON ფორმატში:
+{
+  "publicReply": "...",
+  "privateReply": "..."
+}
+`;
+
+  try {
+    const res = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        generationConfig: {
+          temperature: 0.35,
+          responseMimeType: 'application/json',
+        },
+      }),
+    });
+
+    if (!res.ok) return fallback;
+
+    const data = await res.json();
+    const parsed = JSON.parse(data.candidates?.[0]?.content?.parts?.[0]?.text || '{}');
+    return {
+      publicReply: parsed.publicReply || fallback.publicReply,
+      privateReply: parsed.privateReply || fallback.privateReply,
+    };
+  } catch (err) {
+    console.error('[AI] Comment reply generation failed, using fallback:', err.message);
+    return fallback;
+  }
+}
+
