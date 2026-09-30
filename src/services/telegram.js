@@ -10,23 +10,24 @@ export async function notifyTelegramOrder(order) {
     return false;
   }
 
-  const itemsList = (order.items || [])
-    .map(item => `  • *${item.name}* x${item.quantity || 1} — ${item.price || ''}₾`)
-    .join('\n');
+  const productDetails = order.product
+    ? `  • *${order.product}* — ${order.price ? order.price + ' ₾' : ''}`
+    : (order.items || [])
+        .map(item => `  • *${item.name}* x${item.quantity || 1} — ${item.price || ''}₾`)
+        .join('\n');
+
+  const total = order.price || order.totalPrice || '0';
+  const cleanPhone = (order.phone || '').replace(/[^\d+]/g, '');
 
   const text = `
 🐾 *ახალი შეკვეთა #${order.id} — ხრამუნა*
 ━━━━━━━━━━━━━━━━━━━
-👤 *მომხმარებელი:* ${order.customerName || 'უცნობი'}
-📞 *ტელეფონი:* \`${order.phone || 'მითითებული არ არის'}\`
+📦 *პროდუქტი:*
+${productDetails || '  • დაუზუსტებელი'}
+
+💰 *თანხა:* *${total} ₾*
 📍 *მისამართი:* ${order.address || 'დაუზუსტებელი'}
-📦 *მიწოდების ტიპი:* ${order.deliveryType === 'WAITLIST' ? 'Waitlist (ახალი პარტია, -10%)' : 'სტანდარტული (24-48 სთ)'}
-
-🛒 *შეკვეთილი პროდუქტები:*
-${itemsList || '  • დაუზუსტებელი კალათა'}
-
-💰 *სულ გადასახდელი:* *${order.totalPrice || 0} ₾*
-💳 *გადახდის მეთოდი:* ${order.paymentMethod || 'საბანკო გადარიცხვა'}
+📞 *ტელეფონი:* \`${order.phone || 'არ არის'}\` ${cleanPhone ? `([დარეკვა](tel:${cleanPhone}))` : ''}
 ━━━━━━━━━━━━━━━━━━━
 ⏰ *დრო:* ${new Date().toLocaleString('ka-GE', { timeZone: 'Asia/Tbilisi' })}
 `;

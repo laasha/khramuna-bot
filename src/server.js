@@ -13,6 +13,7 @@ import {
   sendSenderAction,
 } from './services/facebook.js';
 import { saveOrderToGoogleSheet } from './services/sheets.js';
+import { notifyTelegramOrder } from './services/telegram.js';
 import { handleCommentAction, startCommentMonitor } from './services/commentMonitor.js';
 import { getOrders, getSession, saveOrder, updateSession } from './services/storage.js';
 
@@ -228,8 +229,9 @@ app.post('/api/test-chat', async (req, res) => {
       userId,
       ...aiRes.order,
     });
-    // Sync with Google Sheets
+    // Sync with Google Sheets & Telegram
     await saveOrderToGoogleSheet(createdOrder);
+    await notifyTelegramOrder(createdOrder);
   }
 
   res.json({
@@ -354,6 +356,7 @@ app.post('/webhook', async (req, res) => {
                 ...aiResponse.order,
               });
               await saveOrderToGoogleSheet(order);
+              await notifyTelegramOrder(order);
             }
 
             // Simulate natural human typing pause
