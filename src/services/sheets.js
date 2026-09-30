@@ -4,7 +4,7 @@
  */
 
 export async function saveOrderToGoogleSheet(order) {
-  const webhookUrl = process.env.GOOGLE_SHEET_WEBHOOK_URL;
+  const webhookUrl = process.env.GOOGLE_SHEET_WEBHOOK_URL || 'https://script.google.com/macros/s/AKfycbwJOqYmyrAiQrRR2t6mIC9s93xWSh7NyWrw2RBoGYr_mrtlhn0cv5-Buclf3uucRU_SHw/exec';
 
   if (!webhookUrl) {
     console.log('[Google Sheets] GOOGLE_SHEET_WEBHOOK_URL not configured yet. Order saved locally in data/orders.json.');

@@ -2,8 +2,8 @@
  * Telegram notification service for "ხრამუნა" order dispatches.
  */
 export async function notifyTelegramOrder(order) {
-  const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
+  const token = process.env.TELEGRAM_BOT_TOKEN || '8602396382:AAFiNvqT4SInU4VcIDSJmV31FdK-spMKm7M';
+  const chatId = process.env.TELEGRAM_CHAT_ID || '1317626946';
 
   if (!token || !chatId) {
     console.warn('[Telegram] TELEGRAM_BOT_TOKEN or TELEGRAM_CHAT_ID is not configured. Skipping alert.');
