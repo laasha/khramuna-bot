@@ -225,13 +225,20 @@ app.post('/api/test-chat', async (req, res) => {
 
   let createdOrder = null;
   if (aiRes.isOrderReady && aiRes.order) {
-    createdOrder = saveOrder({
-      userId,
-      ...aiRes.order,
-    });
-    // Sync with Google Sheets & Telegram
-    await saveOrderToGoogleSheet(createdOrder);
-    await notifyTelegramOrder(createdOrder);
+    const cleanPhone = (aiRes.order.phone || '').replace(/[^\d]/g, '');
+    const cleanAddress = (aiRes.order.address || '').trim();
+
+    if (cleanPhone.length >= 9 && cleanAddress.length >= 5) {
+      createdOrder = saveOrder({
+        userId,
+        ...aiRes.order,
+      });
+      // Sync with Google Sheets & Telegram
+      await saveOrderToGoogleSheet(createdOrder);
+      await notifyTelegramOrder(createdOrder);
+    } else {
+      console.warn('[TestChat] Order blocked by validation:', aiRes.order);
+    }
   }
 
   res.json({
@@ -351,12 +358,19 @@ app.post('/webhook', async (req, res) => {
             console.log('[Messenger] Gemini reply:', aiResponse.replyText);
 
             if (aiResponse.isOrderReady && aiResponse.order) {
-              const order = saveOrder({
-                userId: senderPsid,
-                ...aiResponse.order,
-              });
-              await saveOrderToGoogleSheet(order);
-              await notifyTelegramOrder(order);
+              const cleanPhone = (aiResponse.order.phone || '').replace(/[^\d]/g, '');
+              const cleanAddress = (aiResponse.order.address || '').trim();
+
+              if (cleanPhone.length >= 9 && cleanAddress.length >= 5) {
+                const order = saveOrder({
+                  userId: senderPsid,
+                  ...aiResponse.order,
+                });
+                await saveOrderToGoogleSheet(order);
+                await notifyTelegramOrder(order);
+              } else {
+                console.warn('[Messenger] Order blocked by validation guard:', aiResponse.order);
+              }
             }
 
             // Simulate natural human typing pause
