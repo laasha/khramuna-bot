@@ -187,42 +187,80 @@ export async function generateBotResponse(userMessage, sessionHistory = []) {
 }
 
 /**
- * Generates tailored public and private replies for a Facebook post comment.
+ * Builds the Authority / Feed Mode system prompt for public posts and community discussions.
  */
-export async function generateCommentReplies({ commenterName = '', commentText = '' }) {
+function buildFeedAuthorityPrompt(recentReplies = []) {
+  const historySnippet = recentReplies.length > 0
+    ? `\nანტი-დუბლირების სავალდებულო წესი:\nარ გაიმეორო ქვემოთ მოყვანილი ბოლო კომენტარების სტრუქტურა და ფრაზები:\n${recentReplies.map((r, i) => `${i + 1}. "${r}"`).join('\n')}\n`
+    : '';
+
+  return `
+შენ ხარ "ხრამუნას" (ნატურალური სასუსნავები ძაღლებისთვის) შემქმნელი, გამოცდილი პატრონი და ოთხფეხების კვების ექსპერტი. 
+კომენტარს პასუხობ "ხრამუნას" ოფიციალური გვერდით Facebook-ის პოსტის ან ჯგუფის დისკუსიის ქვეშ.
+
+მთავარი მიზანი:
+გასცე გულწრფელი, კომპეტენტური, მზრუნველი და ადამიანური რჩევა. 
+არანაირი აგრესიული გაყიდვები, არანაირი რობოტული სარეკლამო სკრიპტი, არანაირი ფასების ჩამოწერა!
+
+ტონი და სტილი (კრიტიკულად მნიშვნელოვანია):
+1. 100% ცოცხალი, ყოველდღიური სასაუბრო ქართული (როგორც რეალური ადამიანი წერს ფბ-ზე: „კი“, „ჩემსაზეც ეგრე იყო“, „მგონი ჯობს“, „რავიცი“, „ჰო“, „ეგრეა ხოლმე“, „ჩვენთან“, „ჩვენი“).
+2. კატეგორიულად აკრძალულია:
+   - რობოტული ოფიციალური მისალმებები („მოგესალმებით“, „ძვირფასო მომხმარებელო“);
+   - ბულეტ-პოინტები, სიები, Bold ტექსტი (არანაირი Markdown გაფორმება: არ გამოიყენო *, **, #);
+   - პათეტიკური ან წიგნისებური გამონათქვამები.
+3. ზომა: მაქსიმუმ 2-4 მოკლე, ბუნებრივი წინადადება. შეიძლება სასვენი ნიშნის გამოტოვებაც ბუნებრიობისთვის.
+
+პერსონა და ბრენდის ხსენება (პოზიციონირება როგორც შემქმნელი/გუნდი):
+- რადგან ოფიციალური გვერდით წერ, არ თქვა „მე ვყიდულობ ხრამუნას“. ისაუბრე როგორც შემქმნელმა, მაგალითად:
+  * „ჩვენი გამომშრალი თათები სცადე, ბევრი გვიწონებს მაგ პრობლემაზე“
+  * „ზუსტად მაგიტომ ვაშრობთ ჩვენთან საქონლის ფილტვს, მსგავსი ალერგიების დროს იდეალურია“
+  * „ჩვენს ხორცის პუდრას ვურჩევ ხოლმე ეგეთ დროს მშრალ საჭმელზე მოსაყრელად, მადას უღვიძებს“
+- ბრენდი ახსენე მხოლოდ მაშინ, როცა ეს ორგანულად ეხმარება პრობლემის მოგვარებას. თუ პოსტი არ ეხება კვებას/ღრღნას/სასუსნავს (მაგ. ძაღლი დაიკარგა, ან მძიმე ოპერაცია სჭირდება), საერთოდ არ ახსენო პროდუქტი! მიეცი მხოლოდ ადამიანური თანადგომა და ურჩიე ვეტერინართან მისვლა.
+
+ჩართულობის (Engagement) ოქროს წესი:
+პასუხის ბოლოს თითქმის ყოველთვის დასვი ბუნებრივი, მეგობრული შემხვედრი კითხვა, რაც დიალოგს გამოიწვევს და პოსტზე ჩართულობას გაზრდის.
+მაგალითად:
+- „რამდენი თვისაა ახლა?“
+- „რომელი ჯიშია თქვენი ცუგა?“
+- „რომელ საჭმელს აჭმევთ ხოლმე?“
+- „ალერგია ხომ არ შეგინიშნავთ ადრე?“
+${historySnippet}
+დააბრუნე მხოლოდ სუფთა JSON ობიექტი:
+{
+  "publicReply": "თქვენი ბუნებრივი, ცოცხალი კომენტარი",
+  "isDirectInquiry": false, // true მხოლოდ იმ შემთხვევაში, თუ კომენტარში პირდაპირ ითხოვს შეკვეთას, ფასს ან პირადში მოწერას
+  "privateReply": "" // თუ isDirectInquiry არის true, აქ ჩაწერე მოკლე პირადი შეტყობინება მესენჯერისთვის, სხვა შემთხვევაში ცარიელი სტრინგი
+}
+`;
+}
+
+/**
+ * Generates tailored Authority / Feed reply for Facebook comments & groups.
+ */
+export async function generateFeedCommentReply({
+  commenterName = '',
+  commentText = '',
+  postText = '',
+  recentReplies = [],
+}) {
   const apiKey = process.env.GEMINI_API_KEY;
-  const nameGreeting = commenterName ? `გამარჯობა ${commenterName}!` : 'გამარჯობა!';
+  const firstName = commenterName ? commenterName.split(' ')[0] : '';
+  const greeting = firstName ? `${firstName}, ` : '';
 
   const fallback = {
-    publicReply: `${nameGreeting} 🐾 დეტალები და ფასები პირადში მოგწერეთ.`,
-    privateReply: `${nameGreeting} 🐾 მადლობა დაინტერესებისთვის. გვაქვს 4 სახეობის ნატურალური სასუსნავი: თათები (18₾), ღრუბელი (15₾), კუბები (17₾) და პუდრა (12₾), ან სრული ნაკრები (49.50₾). რომელი ჯიშის ცუგა გყავთ? 🐶`,
+    publicReply: `${greeting}ჩვენთან ზუსტად მაგიტომ ვაშრობთ ნატურალურ საქონლის ფილტვსა და ქათმის თათებს, რომ მსგავსი პრობლემების დროს უსაფრთხო გამოსავალი იყოს. რომელი ჯიშის ცუგა გყავთ? 🐾`,
+    isDirectInquiry: false,
+    privateReply: '',
   };
 
   if (!apiKey || !commentText.trim()) {
     return fallback;
   }
 
-  const prompt = `
-შენ ხარ "ხრამუნას" (ნატურალური სასუსნავები ძაღლებისთვის) კონსულტანტი. მომხმარებელმა Facebook პოსტის ქვეშ დატოვა კომენტარი.
-მომხმარებელი: "${commenterName}"
+  const promptContent = `
+პოსტის კონტექსტი: "${postText || 'ძაღლების ჯგუფის დისკუსია / ხრამუნას პოსტი'}"
+ავტორი/კომენტატორი: "${commenterName}"
 კომენტარი: "${commentText}"
-
-პროდუქცია:
-• დრაკონის თათები (ქათმის ფეხი, კბილებისთვის/კოლაგენი) — 18₾
-• ღრუბელი (საქონლის ფილტვი, მსუბუქი/წვრთნისთვის/ლეკვებისთვის) — 15₾
-• სუპერ-კუბები (საქონლის ღვიძლი, ვიტამინები) — 17₾
-• ჯადოსნური პუდრა (ხორცის ფხვნილი უმადობისას) — 12₾
-(სრული ნაკრები ოთხივე ერთად — 49.50₾).
-
-მოამზადე 2 ტექსტი:
-1. "publicReply": მოკლე, თბილი საჯარო პასუხი კომენტარზე (1 წინადადება). გაითვალისწინე მისი კონკრეტული კითხვა/ჯიში და აღნიშნე, რომ პირადშიც მოწერე ❤️
-2. "privateReply": პირად მესენჯერში გასაგზავნი თბილი შეტყობინება (2-3 მოკლე წინადადება), რომელიც ზუსტად ეხმიანება მის კომენტარს, ურჩევს შესაბამის პროდუქტს და ეკითხება აზრს.
-
-დააბრუნე JSON ფორმატში:
-{
-  "publicReply": "...",
-  "privateReply": "..."
-}
 `;
 
   try {
@@ -230,25 +268,63 @@ export async function generateCommentReplies({ commenterName = '', commentText =
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
+        system_instruction: {
+          parts: [{ text: buildFeedAuthorityPrompt(recentReplies) }],
+        },
+        contents: [{ role: 'user', parts: [{ text: promptContent }] }],
         generationConfig: {
-          temperature: 0.35,
+          temperature: 0.7, // Higher temperature for high lexical diversity and natural human feel
           responseMimeType: 'application/json',
         },
       }),
     });
 
-    if (!res.ok) return fallback;
+    if (!res.ok) {
+      console.warn(`[AI Feed] Primary model returned status ${res.status}, retrying with backup...`);
+      const backupRes = await fetch(`${GEMINI_BACKUP_URL}?key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          system_instruction: {
+            parts: [{ text: buildFeedAuthorityPrompt(recentReplies) }],
+          },
+          contents: [{ role: 'user', parts: [{ text: promptContent }] }],
+          generationConfig: {
+            temperature: 0.7,
+            responseMimeType: 'application/json',
+          },
+        }),
+      });
+      if (!backupRes.ok) return fallback;
+      const data = await backupRes.json();
+      const parsed = JSON.parse(data.candidates?.[0]?.content?.parts?.[0]?.text || '{}');
+      return {
+        publicReply: parsed.publicReply || fallback.publicReply,
+        isDirectInquiry: !!parsed.isDirectInquiry,
+        privateReply: parsed.privateReply || '',
+      };
+    }
 
     const data = await res.json();
-    const parsed = JSON.parse(data.candidates?.[0]?.content?.parts?.[0]?.text || '{}');
+    const candidateText = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!candidateText) return fallback;
+
+    const parsed = JSON.parse(candidateText);
     return {
       publicReply: parsed.publicReply || fallback.publicReply,
-      privateReply: parsed.privateReply || fallback.privateReply,
+      isDirectInquiry: !!parsed.isDirectInquiry,
+      privateReply: parsed.privateReply || '',
     };
   } catch (err) {
-    console.error('[AI] Comment reply generation failed, using fallback:', err.message);
+    console.error('[AI] Feed reply generation failed, using fallback:', err.message);
     return fallback;
   }
+}
+
+/**
+ * Backwards compatible alias for existing handlers.
+ */
+export async function generateCommentReplies({ commenterName = '', commentText = '', postText = '', recentReplies = [] }) {
+  return generateFeedCommentReply({ commenterName, commentText, postText, recentReplies });
 }
 

@@ -145,3 +145,25 @@ export function markCommentReplied(commentId) {
     writeJsonFile(REPLIED_COMMENTS_FILE, list);
   }
 }
+
+const FEED_REPLIES_FILE = path.join(DATA_DIR, 'feed_replies.json');
+
+/**
+ * Retrieves recent public feed replies for AI anti-repetition context.
+ */
+export function getRecentFeedReplies(limit = 8) {
+  const list = readJsonFile(FEED_REPLIES_FILE, []);
+  return list.slice(-limit);
+}
+
+/**
+ * Saves a new feed reply to history.
+ */
+export function saveFeedReply(text) {
+  if (!text || typeof text !== 'string') return;
+  const list = readJsonFile(FEED_REPLIES_FILE, []);
+  list.push(text.trim());
+  // Keep last 30 replies
+  const trimmed = list.slice(-30);
+  writeJsonFile(FEED_REPLIES_FILE, trimmed);
+}

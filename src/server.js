@@ -383,7 +383,7 @@ app.post('/webhook', async (req, res) => {
           }
         }
 
-        // 2. Handle Comments on Posts (Feed Webhook)
+        // 2. Handle Comments on Posts & Groups (Feed Webhook -> Authority Mode)
         for (const change of entry.changes || []) {
           if (change.field === 'feed' && change.value) {
             const val = change.value;
@@ -391,13 +391,17 @@ app.post('/webhook', async (req, res) => {
             if (val.item === 'comment' && val.verb === 'add' && val.from && val.from.id !== '928195650386088') {
               const commentId = val.comment_id;
               const commenterName = val.from.name || '';
-              console.log(`[Feed Webhook] Comment from ${commenterName} (${commentId}): "${val.message || ''}"`);
+              const commentText = val.message || '';
+              const postText = val.post?.message || val.post_title || '';
+              console.log(`[Feed Webhook] Incoming comment from ${commenterName} (${commentId}): "${commentText}"`);
 
-              await handleCommentAction({
+              // Dispatch asynchronously so Meta receives instant 200 OK while human jitter delay runs
+              handleCommentAction({
                 commentId,
                 commenterName,
-                commentText: val.message || '',
-              });
+                commentText,
+                postText,
+              }).catch((err) => console.error('[Feed Webhook] Background comment action error:', err));
             }
           }
         }
