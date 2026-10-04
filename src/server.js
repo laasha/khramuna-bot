@@ -327,7 +327,7 @@ app.post('/webhook', async (req, res) => {
   const body = req.body;
   console.log('[Webhook Incoming POST]:', JSON.stringify(body));
 
-  if (body.object === 'page') {
+  if (body.object === 'page' || body.object === 'instagram') {
     try {
       for (const entry of body.entry || []) {
         for (const webhookEvent of entry.messaging || []) {
