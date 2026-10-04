@@ -40,6 +40,57 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Official Privacy Policy & User Data Deletion for Meta App Review compliance
+app.get(['/', '/privacy', '/terms', '/data-deletion'], (req, res) => {
+  const html = `<!DOCTYPE html>
+<html lang="ka">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ხრამუნა • კონფიდენციალურობის პოლიტიკა (Privacy Policy)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Noto Sans Georgian', sans-serif; background: #0f172a; color: #f1f5f9; padding: 40px 20px; line-height: 1.7; }
+    .card { max-width: 800px; margin: 0 auto; background: #1e293b; border: 1px solid #334155; border-radius: 16px; padding: 36px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); }
+    h1 { color: #f59e0b; font-size: 26px; margin-bottom: 20px; }
+    h2 { color: #fff; font-size: 18px; margin-top: 24px; margin-bottom: 10px; border-bottom: 1px solid #334155; padding-bottom: 6px; }
+    p, li { color: #94a3b8; font-size: 15px; }
+    ul { padding-left: 20px; margin-bottom: 16px; }
+    .badge { display: inline-block; background: #f59e0b; color: #000; font-weight: 700; padding: 4px 12px; border-radius: 20px; font-size: 12px; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="badge">🐾 ხრამუნა (Khramuna)</div>
+    <h1>კონფიდენციალურობის პოლიტიკა & მონაცემთა დაცვა</h1>
+    <p>ბოლო განახლება: 2026 წლის ოქტომბერი</p>
+
+    <h2>1. რა ინფორმაციას ვაგროვებთ</h2>
+    <p>„ხრამუნა“ (Facebook Messenger და Instagram ავტომატიზაცია) აგროვებს მხოლოდ იმ მინიმალურ მონაცემებს, რომლებიც აუცილებელია შეკვეთის მისაღებად და საკურიერო მიწოდებისთვის:</p>
+    <ul>
+      <li>მომხმარებლის მიერ ჩატში ნებაყოფლობით მოწოდებული საკონტაქტო სახელი და ტელეფონის ნომერი;</li>
+      <li>მიწოდების მისამართი;</li>
+      <li>შერჩეული პროდუქცია და შეკვეთის დეტალები.</li>
+    </ul>
+
+    <h2>2. მონაცემთა გამოყენება</h2>
+    <p>შეგროვებული ინფორმაცია გამოიყენება ექსკლუზიურად შეკვეთის დასამუშავებლად, კურიერის მიერ ჩასაბარებლად და მომხმარებელთან უკუკავშირისთვის. ჩვენ არასოდეს ვყიდით და არ გადავცემთ თქვენს მონაცემებს მესამე პირებს მარკეტინგული მიზნებისთვის.</p>
+
+    <h2>3. მონაცემთა წაშლის მოთხოვნა (User Data Deletion)</h2>
+    <p>ნებისმიერ მომხმარებელს აქვს უფლება, ნებისმიერ დროს მოითხოვოს საკუთარი შეკვეთისა და ჩატის მონაცემების სრული წაშლა ჩვენი ბაზიდან. ამისთვის საკმარისია მოგვწეროთ ელფოსტაზე: <strong>khramuna.geo@gmail.com</strong> ან პირდაპირ Facebook Messenger-ში სიტყვით „მონაცემების წაშლა“. მოთხოვნა დაკმაყოფილდება 24 საათში.</p>
+
+    <h2>4. კონტაქტი</h2>
+    <p>კითხვების შემთხვევაში შეგიძლიათ დაგვიკავშირდეთ: <br>
+    ელფოსტა: <strong>khramuna.geo@gmail.com</strong><br>
+    Facebook: <strong>facebook.com/Khramuna</strong></p>
+  </div>
+</body>
+</html>`;
+  res.send(html);
+});
+
 // Orders API for owner
 app.get('/api/orders', (req, res) => {
   const orders = getOrders();
