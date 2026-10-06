@@ -8,7 +8,7 @@ const PAGE_ID = '928195650386088';
  * Handles responding to a user comment on Feed/Posts/Groups with natural authority tone.
  * Enforces human-like 2-5 minute delay (120,000 - 300,000 ms) and deduplication.
  */
-export async function handleCommentAction({ commentId, commenterName = '', commentText = '', postText = '' }) {
+export async function handleCommentAction({ commentId, commenterName = '', commentText = '', postText = '', isInstagram = false }) {
   if (!commentId) return;
 
   // Deduplication check
@@ -39,8 +39,8 @@ export async function handleCommentAction({ commentId, commenterName = '', comme
       recentReplies,
     });
 
-    console.log(`[Comment Service] Sending public authority reply to comment ${commentId}: "${publicReply}"`);
-    await replyToComment(commentId, publicReply);
+    console.log(`[Comment Service] Sending public authority reply to ${isInstagram ? 'Instagram' : 'Facebook'} comment ${commentId}: "${publicReply}"`);
+    await replyToComment(commentId, publicReply, isInstagram);
     saveFeedReply(publicReply);
 
     // Only send private reply if customer explicitly inquired about price/ordering/contact

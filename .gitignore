@@ -4,3 +4,5 @@ node_modules/
 cloudflared.exe
 *.log
 .vercel
+
+.vercel

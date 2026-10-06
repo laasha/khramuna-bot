@@ -434,25 +434,44 @@ app.post('/webhook', async (req, res) => {
           }
         }
 
-        // 2. Handle Comments on Posts & Groups (Feed Webhook -> Authority Mode)
+        // 2. Handle Comments on Posts (Facebook Feed & Instagram Comments)
         for (const change of entry.changes || []) {
+          // Facebook Comments
           if (change.field === 'feed' && change.value) {
             const val = change.value;
-            // Only process new comments from users (not by the page itself)
             if (val.item === 'comment' && val.verb === 'add' && val.from && val.from.id !== '928195650386088') {
               const commentId = val.comment_id;
               const commenterName = val.from.name || '';
               const commentText = val.message || '';
               const postText = val.post?.message || val.post_title || '';
-              console.log(`[Feed Webhook] Incoming comment from ${commenterName} (${commentId}): "${commentText}"`);
+              console.log(`[Feed Webhook] Incoming Facebook comment from ${commenterName} (${commentId}): "${commentText}"`);
 
-              // Dispatch asynchronously so Meta receives instant 200 OK while human jitter delay runs
               handleCommentAction({
                 commentId,
                 commenterName,
                 commentText,
                 postText,
+                isInstagram: false,
               }).catch((err) => console.error('[Feed Webhook] Background comment action error:', err));
+            }
+          }
+
+          // Instagram Comments
+          if (change.field === 'comments' && change.value) {
+            const val = change.value;
+            if (val.id && val.from && val.from.username !== 'khramuna_snacks') {
+              const commentId = val.id;
+              const commenterName = val.from.username || '';
+              const commentText = val.text || '';
+              console.log(`[Instagram Webhook] Incoming IG comment from @${commenterName} (${commentId}): "${commentText}"`);
+
+              handleCommentAction({
+                commentId,
+                commenterName: `@${commenterName}`,
+                commentText,
+                postText: '',
+                isInstagram: true,
+              }).catch((err) => console.error('[Instagram Webhook] Background comment action error:', err));
             }
           }
         }

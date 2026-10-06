@@ -44,12 +44,16 @@ export async function sendMessengerMessage(recipientId, text) {
 /**
  * Sends a public reply to a Facebook post comment.
  */
-export async function replyToComment(commentId, text) {
+export async function replyToComment(commentId, text, isInstagram = false) {
   const pageAccessToken = process.env.FB_PAGE_ACCESS_TOKEN;
   if (!pageAccessToken) return false;
 
+  const endpoint = isInstagram
+    ? `${GRAPH_API_BASE}/${commentId}/replies?access_token=${pageAccessToken}`
+    : `${GRAPH_API_BASE}/${commentId}/comments?access_token=${pageAccessToken}`;
+
   try {
-    const res = await fetch(`${GRAPH_API_BASE}/${commentId}/comments?access_token=${pageAccessToken}`, {
+    const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ message: text }),
