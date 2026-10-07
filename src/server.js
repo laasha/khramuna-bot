@@ -421,10 +421,13 @@ app.post('/webhook', async (req, res) => {
             console.log('[Messenger] Gemini reply:', aiResponse.replyText);
 
             if (aiResponse.isOrderReady && aiResponse.order) {
+              const cleanProduct = (aiResponse.order.product || '').trim();
+              const orderPrice = Number(aiResponse.order.price) || 0;
               const cleanPhone = (aiResponse.order.phone || '').replace(/[^\d]/g, '');
               const cleanAddress = (aiResponse.order.address || '').trim();
 
-              if (cleanPhone.length >= 9 && cleanAddress.length >= 5) {
+              // Strict 4-point guard: Product, Price, Phone, Address must all be verified!
+              if (cleanProduct.length >= 3 && !cleanProduct.includes('უცნობი') && orderPrice > 0 && cleanPhone.length >= 9 && cleanAddress.length >= 5) {
                 const order = saveOrder({
                   userId: senderPsid,
                   ...aiResponse.order,
@@ -458,13 +461,13 @@ app.post('/webhook', async (req, res) => {
               const postText = val.post?.message || val.post_title || '';
               console.log(`[Feed Webhook] Incoming Facebook comment from ${commenterName} (${commentId}): "${commentText}"`);
 
-              handleCommentAction({
+              await handleCommentAction({
                 commentId,
                 commenterName,
                 commentText,
                 postText,
                 isInstagram: false,
-              }).catch((err) => console.error('[Feed Webhook] Background comment action error:', err));
+              }).catch((err) => console.error('[Feed Webhook] Comment action error:', err));
             }
           }
 

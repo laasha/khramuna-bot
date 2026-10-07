@@ -22,9 +22,7 @@ export async function handleCommentAction({ commentId, commenterName = '', comme
   // 1. Natural Human Jitter / Delay (2 to 5 minutes: 120,000 - 300,000 ms)
   // In Vercel serverless environment, cap at 5-8s to avoid lambda execution timeout.
   const isVercel = process.env.VERCEL === '1';
-  const minDelay = isVercel ? 5000 : 120000;
-  const maxDelay = isVercel ? 8000 : 300000;
-  const delayMs = Math.floor(Math.random() * (maxDelay - minDelay + 1)) + minDelay;
+  const delayMs = isVercel ? 500 : Math.floor(Math.random() * 60000) + 15000;
   
   console.log(`[Comment Service] Scheduling reply to "${commenterName || 'Customer'}" (${commentId}) with human delay of ${(delayMs / 1000).toFixed(0)}s...`);
   await new Promise((resolve) => setTimeout(resolve, delayMs));

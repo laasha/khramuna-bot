@@ -1,5 +1,5 @@
 /**
- * Telegram notification service for "ხრამუნა" order dispatches.
+ * Telegram notification service for "ხრამუნა" order dispatches with Interactive Buttons.
  */
 export async function notifyTelegramOrder(order) {
   const token = process.env.TELEGRAM_BOT_TOKEN || '8602396382:AAFiNvqT4SInU4VcIDSJmV31FdK-spMKm7M';
@@ -18,11 +18,12 @@ export async function notifyTelegramOrder(order) {
 
   const total = order.price || order.totalPrice || '0';
   const cleanPhone = (order.phone || '').replace(/[^\d+]/g, '');
+  const petDetails = order.petInfo ? `🐶 *ცუგა:* ${order.petInfo}\n` : '';
 
   const text = `
 🐾 *ახალი შეკვეთა #${order.id} — ხრამუნა*
 ━━━━━━━━━━━━━━━━━━━
-📦 *პროდუქტი:*
+${petDetails}📦 *პროდუქტი:*
 ${productDetails || '  • დაუზუსტებელი'}
 
 💰 *თანხა:* *${total} ₾*
@@ -41,6 +42,15 @@ ${productDetails || '  • დაუზუსტებელი'}
         chat_id: chatId,
         text,
         parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: [
+            [
+              { text: '✅ დადასტურდა', callback_data: `confirm_${order.id}` },
+              { text: '🚚 გატანილია კურიერთან', callback_data: `shipped_${order.id}` }
+            ],
+            cleanPhone ? [{ text: `📞 დარეკვა (${cleanPhone})`, url: `tel:${cleanPhone}` }] : []
+          ].filter(row => row.length > 0)
+        }
       }),
     });
 
