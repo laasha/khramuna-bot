@@ -1,5 +1,5 @@
 /**
- * Telegram notification service for "ხრამუნა" order dispatches with Interactive Buttons.
+ * Telegram notification service for "ხრამუნა" order dispatches with Courier Directives.
  */
 export async function notifyTelegramOrder(order) {
   const token = process.env.TELEGRAM_BOT_TOKEN || '8602396382:AAFiNvqT4SInU4VcIDSJmV31FdK-spMKm7M';
@@ -19,16 +19,25 @@ export async function notifyTelegramOrder(order) {
   const total = order.price || order.totalPrice || '0';
   const cleanPhone = (order.phone || '').replace(/[^\d+]/g, '');
   const petDetails = order.petInfo ? `🐶 *ცუგა:* ${order.petInfo}\n` : '';
+  const notesDetails = order.deliveryNotes ? `📝 *შენიშვნა/დრო:* ${order.deliveryNotes}\n` : '';
+  const cityDetails = order.city ? `🏙️ *ქალაქი:* ${order.city}\n` : '';
+
+  const isCash = (order.paymentMethod || '').toLowerCase().includes('ნაღდ') || (order.paymentMethod || '').toLowerCase() === 'cash';
+  const paymentBanner = isCash
+    ? `💵 *გადახდის მეთოდი:* ნაღდი კურიერთან\n🔴 *კურიერის ინსტრუქცია:* **გამოსართმევია: ${total} ₾ (ჩაიბარეთ ნაღდი)**`
+    : `💳 *გადახდის მეთოდი:* საბანკო გადარიცხვა\n🟢 *კურიერის ინსტრუქცია:* **თანხა უკვე გადახდილია, კლიენტს ფული არ გამოართვათ!**`;
 
   const text = `
 🐾 *ახალი შეკვეთა #${order.id} — ხრამუნა*
 ━━━━━━━━━━━━━━━━━━━
-${petDetails}📦 *პროდუქტი:*
+${petDetails}${cityDetails}📦 *პროდუქტი:*
 ${productDetails || '  • დაუზუსტებელი'}
 
-💰 *თანხა:* *${total} ₾*
+💰 *ჯამური თანხა:* *${total} ₾*
+${paymentBanner}
+
 📍 *მისამართი:* ${order.address || 'დაუზუსტებელი'}
-📞 *ტელეფონი:* \`${order.phone || 'არ არის'}\` ${cleanPhone ? `([დარეკვა](tel:${cleanPhone}))` : ''}
+${notesDetails}📞 *ტელეფონი:* \`${order.phone || 'არ არის'}\` ${cleanPhone ? `([დარეკვა](tel:${cleanPhone}))` : ''}
 ━━━━━━━━━━━━━━━━━━━
 ⏰ *დრო:* ${new Date().toLocaleString('ka-GE', { timeZone: 'Asia/Tbilisi' })}
 `;
@@ -63,6 +72,36 @@ ${productDetails || '  • დაუზუსტებელი'}
     return true;
   } catch (error) {
     console.error('[Telegram] Failed to send message:', error.message);
+    return false;
+  }
+}
+
+/**
+ * Forwards payment receipt screenshot to Telegram channel for admin verification.
+ */
+export async function notifyTelegramReceipt(photoUrl, senderId) {
+  const token = process.env.TELEGRAM_BOT_TOKEN || '8602396382:AAFiNvqT4SInU4VcIDSJmV31FdK-spMKm7M';
+  const chatId = process.env.TELEGRAM_CHAT_ID || '1317626946';
+
+  if (!token || !chatId || !photoUrl) return false;
+
+  const caption = `📸 *მიღებულია გადარიცხვის ქვითარი!*\n👤 კლიენტი (ID): \`${senderId}\`\n⏰ ${new Date().toLocaleString('ka-GE', { timeZone: 'Asia/Tbilisi' })}\nგთხოვთ გადაამოწმოთ საბანკო ამონაწერი.`;
+
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        photo: photoUrl,
+        caption,
+        parse_mode: 'Markdown'
+      })
+    });
+    const data = await res.json();
+    return data.ok;
+  } catch (e) {
+    console.error('[Telegram] Receipt photo forward error:', e.message);
     return false;
   }
 }

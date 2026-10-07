@@ -14,7 +14,7 @@ import {
   sendSenderAction,
 } from './services/facebook.js';
 import { saveOrderToGoogleSheet } from './services/sheets.js';
-import { notifyTelegramOrder } from './services/telegram.js';
+import { notifyTelegramOrder, notifyTelegramReceipt } from './services/telegram.js';
 import { handleCommentAction, startCommentMonitor } from './services/commentMonitor.js';
 import { getOrders, getSession, saveOrder, updateSession } from './services/storage.js';
 
@@ -380,6 +380,22 @@ app.post('/webhook', async (req, res) => {
 
           // 2. Handle Text Messages
           const message = webhookEvent.message;
+
+          // Handle Photo / Receipt attachments (e.g. Bank Payment Screenshot)
+          if (message && !message.is_echo && message.attachments && message.attachments.length > 0) {
+            const imageAttachment = message.attachments.find(a => a.type === 'image');
+            if (imageAttachment && imageAttachment.payload?.url) {
+              const photoUrl = imageAttachment.payload.url;
+              console.log(`[Messenger] Received image/receipt from ${senderPsid}: ${photoUrl}`);
+              
+              await notifyTelegramReceipt(photoUrl, senderPsid);
+              
+              const receiptConfirm = 'დიდი მადლობა! გადარიცხვის ქვითარი მიღებულია ❤️ გადავამოწმებთ და შეკვეთას გავატანთ კურიერს.';
+              await sendMessengerMessage(senderPsid, receiptConfirm);
+              updateSession(senderPsid, 'assistant', receiptConfirm);
+              continue;
+            }
+          }
           if (message && !message.is_echo && message.text) {
             if (message.mid) {
               if (processedMids.has(message.mid)) {

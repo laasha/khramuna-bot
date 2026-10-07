@@ -19,6 +19,9 @@ export async function saveOrderToGoogleSheet(order) {
       price: order.price || 0,
       address: order.address || 'არ არის მითითებული',
       phone: order.phone || 'არ არის მითითებული',
+      paymentMethod: order.paymentMethod || 'გადარიცხვა',
+      deliveryNotes: order.deliveryNotes || '',
+      petInfo: order.petInfo || '',
       status: order.status || 'PENDING',
     };
 
