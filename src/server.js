@@ -1,3 +1,4 @@
+const processedMids = new Set();
 import 'dotenv/config';
 import express from 'express';
 import fs from 'node:fs';
@@ -380,6 +381,17 @@ app.post('/webhook', async (req, res) => {
           // 2. Handle Text Messages
           const message = webhookEvent.message;
           if (message && !message.is_echo && message.text) {
+            if (message.mid) {
+              if (processedMids.has(message.mid)) {
+                console.log([Messenger] Duplicate message ignored: \);
+                continue;
+              }
+              processedMids.add(message.mid);
+              if (processedMids.size > 1000) {
+                const first = processedMids.values().next().value;
+                processedMids.delete(first);
+              }
+            }
             const userText = message.text.trim();
             console.log(`[Messenger] Processing message from ${senderPsid}: "${userText}"`);
 
