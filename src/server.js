@@ -1,4 +1,5 @@
 const processedMids = new Set();
+const userTextLocks = new Map();
 import 'dotenv/config';
 import express from 'express';
 import fs from 'node:fs';
@@ -335,7 +336,39 @@ app.post('/webhook', async (req, res) => {
           const senderPsid = webhookEvent.sender?.id;
           if (!senderPsid) continue;
 
-          await sendSenderAction(senderPsid, 'typing_on');
+          // Ignore echo events sent by our own bot/page
+          if (webhookEvent.message?.is_echo) {
+            continue;
+          }
+
+          // 1. Instant Synchronous Deduplication Check (BEFORE ANY AWAIT)
+          const mid = webhookEvent.message?.mid;
+          if (mid) {
+            if (processedMids.has(mid)) {
+              console.log('[Messenger] Duplicate message ignored (instant sync check):', mid);
+              continue;
+            }
+            processedMids.add(mid);
+            if (processedMids.size > 2000) {
+              const first = processedMids.values().next().value;
+              processedMids.delete(first);
+            }
+          }
+
+          // 2. User-level rapid debounce for concurrent duplicate webhook deliveries
+          const incomingRawText = webhookEvent.message?.text?.trim();
+          if (incomingRawText) {
+            const lockKey = `${senderPsid}_${incomingRawText}`;
+            const lastTime = userTextLocks.get(lockKey) || 0;
+            if (Date.now() - lastTime < 3500) {
+              console.log('[Messenger] Rapid duplicate user message ignored within 3.5s:', lockKey);
+              continue;
+            }
+            userTextLocks.set(lockKey, Date.now());
+          }
+
+          // Send typing indicator only after deduplication check passes
+          await sendSenderAction(senderPsid, 'typing_on').catch(() => {});
 
           const postbackPayload = webhookEvent.postback?.payload;
           const quickReplyPayload = webhookEvent.message?.quick_reply?.payload;
@@ -409,17 +442,6 @@ app.post('/webhook', async (req, res) => {
             }
           }
           if (message && !message.is_echo && message.text) {
-            if (message.mid) {
-              if (processedMids.has(message.mid)) {
-                console.log('[Messenger] Duplicate message ignored:', message.mid);
-                continue;
-              }
-              processedMids.add(message.mid);
-              if (processedMids.size > 1000) {
-                const first = processedMids.values().next().value;
-                processedMids.delete(first);
-              }
-            }
             const userText = message.text.trim();
             console.log(`[Messenger] Processing message from ${senderPsid}: "${userText}"`);
 
