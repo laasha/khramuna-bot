@@ -469,8 +469,16 @@ app.post('/webhook', async (req, res) => {
                   userId: senderPsid,
                   ...aiResponse.order,
                 });
-                await saveOrderToGoogleSheet(order);
-                await notifyTelegramOrder(order);
+                try {
+                  await saveOrderToGoogleSheet(order);
+                } catch (sheetErr) {
+                  console.error('[Sheets Non-blocking Error]:', sheetErr.message);
+                }
+                try {
+                  await notifyTelegramOrder(order);
+                } catch (tgErr) {
+                  console.error('[Telegram Non-blocking Error]:', tgErr.message);
+                }
               } else {
                 console.warn('[Messenger] Order blocked by validation guard:', aiResponse.order);
               }
