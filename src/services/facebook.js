@@ -280,3 +280,42 @@ export async function sendProductCatalog(recipientId) {
 
   return await sendGenericTemplate(recipientId, elements);
 }
+
+/**
+ * Sends a high-resolution image attachment to the customer.
+ */
+export async function sendMessengerImage(recipientId, imageUrl) {
+  const pageAccessToken = process.env.FB_PAGE_ACCESS_TOKEN;
+  if (!pageAccessToken || !imageUrl) return false;
+
+  const payload = {
+    recipient: { id: recipientId },
+    message: {
+      attachment: {
+        type: 'image',
+        payload: {
+          url: imageUrl,
+          is_reusable: true,
+        },
+      },
+    },
+  };
+
+  try {
+    const res = await fetch(`${GRAPH_API_BASE}/me/messages?access_token=${pageAccessToken}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    const data = await res.json();
+    if (data.error) {
+      console.error('[Facebook] Error sending image:', data.error);
+      return false;
+    }
+    console.log('[Facebook] Sent product image:', imageUrl);
+    return true;
+  } catch (err) {
+    console.error('[Facebook] Error sending image:', err.message);
+    return false;
+  }
+}
