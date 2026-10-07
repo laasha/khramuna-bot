@@ -383,7 +383,7 @@ app.post('/webhook', async (req, res) => {
           if (message && !message.is_echo && message.text) {
             if (message.mid) {
               if (processedMids.has(message.mid)) {
-                console.log([Messenger] Duplicate message ignored: \);
+                console.log('[Messenger] Duplicate message ignored:', message.mid);
                 continue;
               }
               processedMids.add(message.mid);
