@@ -105,3 +105,32 @@ export async function notifyTelegramReceipt(photoUrl, senderId) {
     return false;
   }
 }
+
+/**
+ * Sends real-time priority alerts to Telegram (Escalations, Rescheduling, Complaints).
+ */
+export async function notifyTelegramAlert(title, details) {
+  const token = process.env.TELEGRAM_BOT_TOKEN || '8602396382:AAFiNvqT4SInU4VcIDSJmV31FdK-spMKm7M';
+  const chatId = process.env.TELEGRAM_CHAT_ID || '1317626946';
+
+  if (!token || !chatId) return false;
+
+  const text = `${title}\n\n${details}\n⏰ ${new Date().toLocaleString('ka-GE', { timeZone: 'Asia/Tbilisi' })}`;
+
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: chatId,
+        text,
+        parse_mode: 'Markdown'
+      })
+    });
+    const data = await res.json();
+    return data.ok;
+  } catch (err) {
+    console.error('[Telegram Alert Error]:', err.message);
+    return false;
+  }
+}

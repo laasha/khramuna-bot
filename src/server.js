@@ -14,7 +14,7 @@ import {
   sendSenderAction,
 } from './services/facebook.js';
 import { saveOrderToGoogleSheet } from './services/sheets.js';
-import { notifyTelegramOrder, notifyTelegramReceipt } from './services/telegram.js';
+import { notifyTelegramOrder, notifyTelegramReceipt, notifyTelegramAlert } from './services/telegram.js';
 import { handleCommentAction, startCommentMonitor } from './services/commentMonitor.js';
 import { getOrders, getSession, saveOrder, updateSession } from './services/storage.js';
 
@@ -396,6 +396,18 @@ app.post('/webhook', async (req, res) => {
               continue;
             }
           }
+          
+          // Handle Voice / Audio message notes (Polite instant reply)
+          if (message && !message.is_echo && message.attachments && message.attachments.length > 0) {
+            const audioAttachment = message.attachments.find(a => a.type === 'audio' || a.type === 'voice');
+            if (audioAttachment) {
+              console.log(`[Messenger] Received voice note from ${senderPsid}`);
+              const voiceReply = 'გამარჯობა! 🐾 სამწუხაროდ, ხმოვანი შეტყობინების მოსმენა ამ წუთას არ შემიძლია. გთხოვთ, მოგვწეროთ ტექსტურად და სიამოვნებით დაგეხმარებით ❤️';
+              await sendMessengerMessage(senderPsid, voiceReply);
+              updateSession(senderPsid, 'assistant', voiceReply);
+              continue;
+            }
+          }
           if (message && !message.is_echo && message.text) {
             if (message.mid) {
               if (processedMids.has(message.mid)) {
@@ -436,6 +448,14 @@ app.post('/webhook', async (req, res) => {
             const aiResponse = await generateBotResponse(userText, session.history);
             console.log('[Messenger] Gemini reply:', aiResponse.replyText);
 
+            
+            if (aiResponse.isEscalated) {
+              console.log(`[Messenger] Escalation triggered for user ${senderPsid}`);
+              await notifyTelegramAlert(
+                '🚨 *პრიორიტეტული ყურადღება / ესკალაცია!*',
+                `👤 კლიენტი (ID): \`${senderPsid}\`\n💬 შეტყობინება: "${userText}"\n🤖 ბოტის პასუხი: "${aiResponse.replyText}"`
+              );
+            }
             if (aiResponse.isOrderReady && aiResponse.order) {
               const cleanProduct = (aiResponse.order.product || '').trim();
               const orderPrice = Number(aiResponse.order.price) || 0;
