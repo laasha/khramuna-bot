@@ -56,9 +56,8 @@ ${notesDetails}📞 *ტელეფონი:* \`${order.phone || 'არ ა�
             [
               { text: '✅ დადასტურდა', callback_data: `confirm_${order.id}` },
               { text: '🚚 გატანილია კურიერთან', callback_data: `shipped_${order.id}` }
-            ],
-            cleanPhone ? [{ text: `📞 დარეკვა (${cleanPhone})`, url: `tel:${cleanPhone}` }] : []
-          ].filter(row => row.length > 0)
+            ]
+          ]
         }
       }),
     });
