@@ -507,7 +507,9 @@ app.post('/webhook', async (req, res) => {
             }
 
             // Simulate natural human typing pause
-            await new Promise((resolve) => setTimeout(resolve, 1200));
+            // Simulate natural human typing pause (1.2s to 2.2s based on response length)
+            const typingDelay = Math.min(2200, Math.max(1200, ((aiResponse.replyText || '').length * 15)));
+            await new Promise((resolve) => setTimeout(resolve, typingDelay));
 
             console.log('[Messenger] Sending natural reply back to Facebook...');
             // Send pure, natural human message without robotic quick-reply buttons
