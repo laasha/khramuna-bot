@@ -390,7 +390,7 @@ app.post('/webhook', async (req, res) => {
               
               await notifyTelegramReceipt(photoUrl, senderPsid);
               
-              const receiptConfirm = 'დიდი მადლობა! გადარიცხვის ქვითარი მიღებულია ❤️ გადავამოწმებთ და შეკვეთას გავატანთ კურიერს.';
+              const receiptConfirm = 'დიდი მადლობა! გადარიცხვის ქვითარი მიღებულია ❤️ თუ მისამართი და ტელეფონის ნომერი ჯერ არ მოგიწერიათ, გთხოვთ მოგვწეროთ, რომ შეკვეთა კურიერს გავატანოთ 🐾';
               await sendMessengerMessage(senderPsid, receiptConfirm);
               updateSession(senderPsid, 'assistant', receiptConfirm);
               continue;
@@ -443,7 +443,8 @@ app.post('/webhook', async (req, res) => {
               const cleanAddress = (aiResponse.order.address || '').trim();
 
               // Strict 4-point guard: Product, Price, Phone, Address must all be verified!
-              if (cleanProduct.length >= 3 && !cleanProduct.includes('უცნობი') && orderPrice > 0 && cleanPhone.length >= 9 && cleanAddress.length >= 5) {
+              const isValidPhone = cleanPhone.length === 9 || (cleanPhone.startsWith('995') && cleanPhone.length === 12);
+              if (cleanProduct.length >= 3 && !cleanProduct.includes('უცნობი') && orderPrice > 0 && isValidPhone && cleanAddress.length >= 5) {
                 const order = saveOrder({
                   userId: senderPsid,
                   ...aiResponse.order,
