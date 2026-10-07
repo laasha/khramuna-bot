@@ -99,30 +99,43 @@ syncOrdersToCsv();
 /**
  * Retrieves or initializes customer chat session history.
  */
+// In-memory cache for fast, seamless context persistence across warm serverless requests
+const memorySessions = new Map();
+
 export function getSession(userId) {
+  if (memorySessions.has(userId)) {
+    return memorySessions.get(userId);
+  }
   const sessions = readJsonFile(SESSIONS_FILE, {});
-  return sessions[userId] || { history: [], lastActivity: Date.now() };
+  const session = sessions[userId] || { history: [], lastActivity: Date.now() };
+  memorySessions.set(userId, session);
+  return session;
 }
 
 /**
  * Appends messages to customer session history.
  */
 export function updateSession(userId, role, text) {
-  const sessions = readJsonFile(SESSIONS_FILE, {});
-  if (!sessions[userId]) {
-    sessions[userId] = { history: [], lastActivity: Date.now() };
-  }
-  sessions[userId].history.push({
+  const session = getSession(userId);
+  session.history.push({
     role,
     text,
     timestamp: new Date().toISOString(),
   });
   // Keep last 15 messages for token efficiency and relevant context
-  if (sessions[userId].history.length > 15) {
-    sessions[userId].history = sessions[userId].history.slice(-15);
+  if (session.history.length > 15) {
+    session.history = session.history.slice(-15);
   }
-  sessions[userId].lastActivity = Date.now();
-  writeJsonFile(SESSIONS_FILE, sessions);
+  session.lastActivity = Date.now();
+  memorySessions.set(userId, session);
+
+  try {
+    const sessions = readJsonFile(SESSIONS_FILE, {});
+    sessions[userId] = session;
+    writeJsonFile(SESSIONS_FILE, sessions);
+  } catch (err) {
+    console.error('[Storage Error] Failed to persist session to disk:', err.message);
+  }
 }
 
 const REPLIED_COMMENTS_FILE = path.join(DATA_DIR, 'replied_comments.json');
