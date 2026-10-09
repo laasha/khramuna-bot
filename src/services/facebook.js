@@ -199,7 +199,9 @@ export async function sendQuickReplies(recipientId, text, quickReplies) {
  */
 export async function sendGenericTemplate(recipientId, elements) {
   const pageAccessToken = process.env.FB_PAGE_ACCESS_TOKEN;
-  if (!pageAccessToken) return false;
+  const igAccessToken = process.env.IG_ACCESS_TOKEN;
+
+  if (!pageAccessToken && !igAccessToken) return false;
 
   const payload = {
     recipient: { id: recipientId },
@@ -214,22 +216,39 @@ export async function sendGenericTemplate(recipientId, elements) {
     },
   };
 
-  try {
-    const res = await fetch(`${GRAPH_API_BASE}/me/messages?access_token=${pageAccessToken}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (data.error) {
-      console.error('[Facebook] Error sending generic template:', data.error);
-      return false;
+  // Try FB Graph API first
+  if (pageAccessToken) {
+    try {
+      const res = await fetch(`${GRAPH_API_BASE}/me/messages?access_token=${pageAccessToken}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!data.error) return true;
+      console.warn('[Facebook] Generic template FB error:', data.error);
+    } catch (err) {
+      console.error('[Facebook] Error sending generic template FB:', err.message);
     }
-    return true;
-  } catch (err) {
-    console.error('[Facebook] Error sending generic template:', err.message);
-    return false;
   }
+
+  // Fallback to IG Direct Graph API
+  if (igAccessToken) {
+    try {
+      const res = await fetch(`${IG_GRAPH_API_BASE}/me/messages?access_token=${igAccessToken}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!data.error) return true;
+      console.warn('[Facebook] Generic template IG error:', data.error);
+    } catch (err) {
+      console.error('[Facebook] Error sending generic template IG:', err.message);
+    }
+  }
+
+  return false;
 }
 
 /**
@@ -292,7 +311,9 @@ export async function sendProductCatalog(recipientId) {
  */
 export async function sendMessengerImage(recipientId, imageUrl) {
   const pageAccessToken = process.env.FB_PAGE_ACCESS_TOKEN;
-  if (!pageAccessToken || !imageUrl) return false;
+  const igAccessToken = process.env.IG_ACCESS_TOKEN;
+
+  if ((!pageAccessToken && !igAccessToken) || !imageUrl) return false;
 
   const payload = {
     recipient: { id: recipientId },
@@ -307,21 +328,43 @@ export async function sendMessengerImage(recipientId, imageUrl) {
     },
   };
 
-  try {
-    const res = await fetch(`${GRAPH_API_BASE}/me/messages?access_token=${pageAccessToken}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json();
-    if (data.error) {
-      console.error('[Facebook] Error sending image:', data.error);
-      return false;
+  // Try FB Graph API first
+  if (pageAccessToken) {
+    try {
+      const res = await fetch(`${GRAPH_API_BASE}/me/messages?access_token=${pageAccessToken}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!data.error) {
+        console.log('[Facebook] Sent product image via FB:', imageUrl);
+        return true;
+      }
+      console.warn('[Facebook] Send image FB error:', data.error);
+    } catch (err) {
+      console.error('[Facebook] Error sending image FB:', err.message);
     }
-    console.log('[Facebook] Sent product image:', imageUrl);
-    return true;
-  } catch (err) {
-    console.error('[Facebook] Error sending image:', err.message);
-    return false;
   }
+
+  // Fallback to IG Direct Graph API
+  if (igAccessToken) {
+    try {
+      const res = await fetch(`${IG_GRAPH_API_BASE}/me/messages?access_token=${igAccessToken}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!data.error) {
+        console.log('[Facebook] Sent product image via IG:', imageUrl);
+        return true;
+      }
+      console.warn('[Facebook] Send image IG error:', data.error);
+    } catch (err) {
+      console.error('[Facebook] Error sending image IG:', err.message);
+    }
+  }
+
+  return false;
 }
