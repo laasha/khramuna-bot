@@ -295,7 +295,7 @@ export async function sendProductCatalog(recipientId) {
     },
     {
       title: '🎁 Full Pack (სრული ნაკრები) — 49.50₾',
-      subtitle: 'ოთხივე პროდუქტი ერთად (55₾-ის ნაცვლად) + 10% ფასდაკლებით',
+      subtitle: 'ოთხივე პროდუქტი ერთად (62₾-ის ნაცვლად) + უფასო მიტანა თბილისში!',
       image_url: `${baseHost}/images/full_pack_v5.jpg`,
       buttons: [
         { type: 'postback', title: '🛒 შეკვეთა (49.50₾)', payload: 'ORDER_full_pack' },
