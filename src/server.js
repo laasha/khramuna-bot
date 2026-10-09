@@ -416,7 +416,7 @@ app.post('/webhook', async (req, res) => {
                 } else if (productKey === 'powder') {
                   await sendMessengerImage(senderPsid, `${BASE_HOST}/images/pudra_v3.jpg`);
                 } else if (productKey === 'full_pack') {
-                  await sendMessengerImage(senderPsid, `${BASE_HOST}/images/full_pack_v3.jpg`);
+                  await sendMessengerImage(senderPsid, `${BASE_HOST}/images/full_pack_v4.jpg`);
                 }
                 const infoText = `🐾 ${product.name}\n\n${product.desc}\nფასი: ${product.price}₾\n\nგსურთ შეკვეთის გაფორმება? 🐶`;
                 await sendMessengerMessage(senderPsid, infoText);
@@ -496,7 +496,7 @@ app.post('/webhook', async (req, res) => {
                 await sendMessengerImage(senderPsid, `${BASE_HOST}/images/pudra_v3.jpg`);
                 await sendMessengerMessage(senderPsid, 'ესეც „ჯადოსნური პუდრა“ (40გ) — 100% ხორცის ტოპინგი 🐾 მადისაღმძვრელი არომატი პრეტენზიული ძაღლებისთვის.');
               } else {
-                await sendMessengerImage(senderPsid, `${BASE_HOST}/images/full_pack_v3.jpg`);
+                await sendMessengerImage(senderPsid, `${BASE_HOST}/images/full_pack_v4.jpg`);
                 await sendMessengerMessage(senderPsid, 'გაეცანით ჩვენს ნატურალურ ასორტიმენტს 🐾 ქვემოთ შეგიძლიათ დეტალურადაც დაათვალიეროთ:');
                 await sendProductCatalog(senderPsid);
               }
