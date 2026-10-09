@@ -259,6 +259,7 @@ export async function sendProductCatalog(recipientId) {
     {
       title: 'დრაკონის თათები (100გ) — 18₾',
       subtitle: '100% ქათმის ფეხი • ბუნებრივი კოლაგენი კბილებისა და სახსრებისთვის',
+      image_url: `${baseHost}/images/tathebi.jpg`,
       buttons: [
         { type: 'postback', title: '🛒 შეკვეთა (18₾)', payload: 'ORDER_paws' },
         { type: 'postback', title: 'ℹ️ დეტალურად', payload: 'INFO_paws' },
@@ -267,6 +268,7 @@ export async function sendProductCatalog(recipientId) {
     {
       title: 'ჯადოსნური პუდრა (40გ) — 12₾',
       subtitle: '100% ხორცის ფხვნილი • მადის აღმძვრელი ტოპინგი პრეტენზიული ძაღლებისთვის',
+      image_url: `${baseHost}/images/pudra.jpg`,
       buttons: [
         { type: 'postback', title: '🛒 შეკვეთა (12₾)', payload: 'ORDER_powder' },
         { type: 'postback', title: 'ℹ️ დეტალურად', payload: 'INFO_powder' },

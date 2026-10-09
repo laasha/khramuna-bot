@@ -411,6 +411,12 @@ app.post('/webhook', async (req, res) => {
                   await sendMessengerImage(senderPsid, `${BASE_HOST}/images/ghrubeli.jpg`);
                 } else if (productKey === 'liver') {
                   await sendMessengerImage(senderPsid, `${BASE_HOST}/images/kubebi.jpg`);
+                } else if (productKey === 'paws') {
+                  await sendMessengerImage(senderPsid, `${BASE_HOST}/images/tathebi.jpg`);
+                } else if (productKey === 'powder') {
+                  await sendMessengerImage(senderPsid, `${BASE_HOST}/images/pudra.jpg`);
+                } else if (productKey === 'full_pack') {
+                  await sendMessengerImage(senderPsid, `${BASE_HOST}/images/duo.jpg`);
                 }
                 const infoText = `🐾 ${product.name}\n\n${product.desc}\nფასი: ${product.price}₾\n\nგსურთ შეკვეთის გაფორმება? 🐶`;
                 await sendMessengerMessage(senderPsid, infoText);
@@ -483,6 +489,12 @@ app.post('/webhook', async (req, res) => {
               } else if (cleanText.includes('კუბ') || cleanText.includes('ღვიძლ')) {
                 await sendMessengerImage(senderPsid, `${BASE_HOST}/images/kubebi.jpg`);
                 await sendMessengerMessage(senderPsid, 'ესეც ჩვენი 100% საქონლის ღვიძლის „სუპერ-კუბები“ (80გ) 🐾 ვიტამინებით სავსე, ძლიერი და მიმზიდველი არომატით.');
+              } else if (cleanText.includes('თათ') || cleanText.includes('დრაკონ') || cleanText.includes('ქათამ')) {
+                await sendMessengerImage(senderPsid, `${BASE_HOST}/images/tathebi.jpg`);
+                await sendMessengerMessage(senderPsid, 'ესეც ჩვენი „დრაკონის თათები“ (100გ) — 100% ქათმის ფეხი 🐾 ბუნებრივი კოლაგენი სახსრებისა და კბილების გასაწმენდად.');
+              } else if (cleanText.includes('პუდრ') || cleanText.includes('ფხვნილ')) {
+                await sendMessengerImage(senderPsid, `${BASE_HOST}/images/pudra.jpg`);
+                await sendMessengerMessage(senderPsid, 'ესეც „ჯადოსნური პუდრა“ (40გ) — 100% ხორცის ტოპინგი 🐾 მადისაღმძვრელი არომატი პრეტენზიული ძაღლებისთვის.');
               } else {
                 await sendMessengerImage(senderPsid, `${BASE_HOST}/images/duo.jpg`);
                 await sendMessengerMessage(senderPsid, 'გაეცანით ჩვენს ნატურალურ ასორტიმენტს 🐾 ქვემოთ შეგიძლიათ დეტალურადაც დაათვალიეროთ:');
