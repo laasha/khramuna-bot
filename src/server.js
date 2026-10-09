@@ -416,7 +416,7 @@ app.post('/webhook', async (req, res) => {
                 } else if (productKey === 'powder') {
                   await sendMessengerImage(senderPsid, `${BASE_HOST}/images/pudra.jpg`);
                 } else if (productKey === 'full_pack') {
-                  await sendMessengerImage(senderPsid, `${BASE_HOST}/images/duo.jpg`);
+                  await sendMessengerImage(senderPsid, `${BASE_HOST}/images/full_pack.jpg`);
                 }
                 const infoText = `🐾 ${product.name}\n\n${product.desc}\nფასი: ${product.price}₾\n\nგსურთ შეკვეთის გაფორმება? 🐶`;
                 await sendMessengerMessage(senderPsid, infoText);
