@@ -142,3 +142,5 @@
 3. **ჩატბოტის ვიზუალური ქცევა:**
    - კატალოგის კარუსელში (`sendProductCatalog`) თითოეულ ბარათს დაემატა პირდაპირი `image_url`.
    - მომხმარებლის მიერ ფოტოს მოთხოვნისას („ფოტო“, „სურათი“, „მაჩვენე“) ან `INFO_` ღილაკზე დაჭერისას ბოტი მყისიერად აგზავნის შესაბამისი პროდუქტის რეალურ, მაღალი ხარისხის ფოტოს (`sendMessengerImage`).
+
+- [2026-10-09] Catalog: Unified all 4 product cards to consistent studio aesthetic on light oak; Full Pack updated to show all 4 products together.
