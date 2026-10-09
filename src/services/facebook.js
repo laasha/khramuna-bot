@@ -236,18 +236,12 @@ export async function sendGenericTemplate(recipientId, elements) {
  * Sends Khramuna's complete interactive product carousel.
  */
 export async function sendProductCatalog(recipientId) {
+  const baseHost = process.env.PUBLIC_URL || 'https://khramuna-bot.vercel.app';
   const elements = [
-    {
-      title: 'დრაკონის თათები (100გ) — 18₾',
-      subtitle: '100% ქათმის ფეხი • ბუნებრივი კოლაგენი კბილებისა და სახსრებისთვის',
-      buttons: [
-        { type: 'postback', title: '🛒 შეკვეთა (18₾)', payload: 'ORDER_paws' },
-        { type: 'postback', title: 'ℹ️ დეტალურად', payload: 'INFO_paws' },
-      ],
-    },
     {
       title: 'ღრუბელი (50გ) — 15₾',
       subtitle: '100% საქონლის ფილტვი • ჰაეროვანი, დაბალკალორიული, წვრთნისთვის',
+      image_url: `${baseHost}/images/ghrubeli.jpg`,
       buttons: [
         { type: 'postback', title: '🛒 შეკვეთა (15₾)', payload: 'ORDER_lung' },
         { type: 'postback', title: 'ℹ️ დეტალურად', payload: 'INFO_lung' },
@@ -256,9 +250,18 @@ export async function sendProductCatalog(recipientId) {
     {
       title: 'სუპერ-კუბები (80გ) — 17₾',
       subtitle: '100% საქონლის ღვიძლი • A და B ჯგუფის ვიტამინები, ძლიერი არომატი',
+      image_url: `${baseHost}/images/kubebi.jpg`,
       buttons: [
         { type: 'postback', title: '🛒 შეკვეთა (17₾)', payload: 'ORDER_liver' },
         { type: 'postback', title: 'ℹ️ დეტალურად', payload: 'INFO_liver' },
+      ],
+    },
+    {
+      title: 'დრაკონის თათები (100გ) — 18₾',
+      subtitle: '100% ქათმის ფეხი • ბუნებრივი კოლაგენი კბილებისა და სახსრებისთვის',
+      buttons: [
+        { type: 'postback', title: '🛒 შეკვეთა (18₾)', payload: 'ORDER_paws' },
+        { type: 'postback', title: 'ℹ️ დეტალურად', payload: 'INFO_paws' },
       ],
     },
     {
@@ -272,6 +275,7 @@ export async function sendProductCatalog(recipientId) {
     {
       title: '🎁 Full Pack (სრული ნაკრები) — 49.50₾',
       subtitle: 'ოთხივე პროდუქტი ერთად (55₾-ის ნაცვლად) + 10% ფასდაკლებით',
+      image_url: `${baseHost}/images/duo.jpg`,
       buttons: [
         { type: 'postback', title: '🛒 შეკვეთა (49.50₾)', payload: 'ORDER_full_pack' },
       ],
