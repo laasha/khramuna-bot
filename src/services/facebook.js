@@ -260,7 +260,7 @@ export async function sendProductCatalog(recipientId) {
     {
       title: 'ღრუბელი (50გ) — 15₾',
       subtitle: '100% საქონლის ფილტვი • ჰაეროვანი, დაბალკალორიული, წვრთნისთვის',
-      image_url: `${baseHost}/images/ghrubeli.jpg`,
+      image_url: `${baseHost}/images/ghrubeli_v3.jpg`,
       buttons: [
         { type: 'postback', title: '🛒 შეკვეთა (15₾)', payload: 'ORDER_lung' },
         { type: 'postback', title: 'ℹ️ დეტალურად', payload: 'INFO_lung' },
@@ -269,7 +269,7 @@ export async function sendProductCatalog(recipientId) {
     {
       title: 'სუპერ-კუბები (80გ) — 17₾',
       subtitle: '100% საქონლის ღვიძლი • A და B ჯგუფის ვიტამინები, ძლიერი არომატი',
-      image_url: `${baseHost}/images/kubebi.jpg`,
+      image_url: `${baseHost}/images/kubebi_v3.jpg`,
       buttons: [
         { type: 'postback', title: '🛒 შეკვეთა (17₾)', payload: 'ORDER_liver' },
         { type: 'postback', title: 'ℹ️ დეტალურად', payload: 'INFO_liver' },
@@ -278,7 +278,7 @@ export async function sendProductCatalog(recipientId) {
     {
       title: 'დრაკონის თათები (100გ) — 18₾',
       subtitle: '100% ქათმის ფეხი • ბუნებრივი კოლაგენი კბილებისა და სახსრებისთვის',
-      image_url: `${baseHost}/images/tathebi.jpg`,
+      image_url: `${baseHost}/images/tathebi_v3.jpg`,
       buttons: [
         { type: 'postback', title: '🛒 შეკვეთა (18₾)', payload: 'ORDER_paws' },
         { type: 'postback', title: 'ℹ️ დეტალურად', payload: 'INFO_paws' },
@@ -287,7 +287,7 @@ export async function sendProductCatalog(recipientId) {
     {
       title: 'ჯადოსნური პუდრა (40გ) — 12₾',
       subtitle: '100% ხორცის ფხვნილი • მადის აღმძვრელი ტოპინგი პრეტენზიული ძაღლებისთვის',
-      image_url: `${baseHost}/images/pudra.jpg`,
+      image_url: `${baseHost}/images/pudra_v3.jpg`,
       buttons: [
         { type: 'postback', title: '🛒 შეკვეთა (12₾)', payload: 'ORDER_powder' },
         { type: 'postback', title: 'ℹ️ დეტალურად', payload: 'INFO_powder' },
@@ -296,7 +296,7 @@ export async function sendProductCatalog(recipientId) {
     {
       title: '🎁 Full Pack (სრული ნაკრები) — 49.50₾',
       subtitle: 'ოთხივე პროდუქტი ერთად (55₾-ის ნაცვლად) + 10% ფასდაკლებით',
-      image_url: `${baseHost}/images/full_pack.jpg`,
+      image_url: `${baseHost}/images/full_pack_v3.jpg`,
       buttons: [
         { type: 'postback', title: '🛒 შეკვეთა (49.50₾)', payload: 'ORDER_full_pack' },
       ],
@@ -322,7 +322,7 @@ export async function sendMessengerImage(recipientId, imageUrl) {
         type: 'image',
         payload: {
           url: imageUrl,
-          is_reusable: true,
+          is_reusable: false,
         },
       },
     },
