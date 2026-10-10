@@ -487,6 +487,15 @@ app.post('/webhook', async (req, res) => {
               updateSession(senderPsid, 'assistant', voiceReply);
               continue;
             }
+
+            // Handle Stickers, thumbs up, videos or other non-text attachments (prevent ghosting)
+            if (!message.text && !message.attachments.some(a => a.type === 'image')) {
+              console.log(`[Messenger] Received non-image/non-audio attachment (sticker/like/media) from ${senderPsid}`);
+              const stickerReply = 'გამარჯობა! 🐾❤️ რით შეგვიძლია დაგეხმაროთ, ან რომელი ნატურალური სასუსნავი გაინტერესებთ თქვენი ცუგასთვის? ✨';
+              await sendMessengerMessage(senderPsid, stickerReply);
+              updateSession(senderPsid, 'assistant', stickerReply);
+              continue;
+            }
           }
           if (message && !message.is_echo && message.text) {
             const userText = message.text.trim();
