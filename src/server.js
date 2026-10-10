@@ -450,11 +450,15 @@ app.post('/webhook', async (req, res) => {
               // Check if user was actively in the payment/checkout flow
               const session = getSession(senderPsid);
               const lastMsgs = (session.history || []).slice(-6).map(m => m.text).join(' ');
-              const isWaitingPayment = lastMsgs.includes('GE05TB') ||
+              const isWaitingPayment = lastMsgs.includes('GE89TB') ||
+                                       lastMsgs.includes('GE86BG') ||
+                                       lastMsgs.includes('GE05TB') ||
                                        lastMsgs.includes('GE12BG') ||
                                        lastMsgs.includes('გადარიცხვ') ||
                                        lastMsgs.includes('ანგარიშზე') ||
-                                       lastMsgs.includes('ქვითარ');
+                                       lastMsgs.includes('ქვითარ') ||
+                                       lastMsgs.includes('ჩარიცხვ') ||
+                                       lastMsgs.includes('რეკვიზიტ');
 
               if (isWaitingPayment) {
                 await notifyTelegramReceipt(photoUrl, senderPsid);
