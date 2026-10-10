@@ -344,6 +344,18 @@ app.post('/webhook', async (req, res) => {
             continue;
           }
 
+          // SECURITY: Whitelist check - strictly process only messages directed to Khramuna
+          // Completely ignore personal Instagram or other connected accounts
+          const recipientId = webhookEvent.recipient?.id;
+          const allowedRecipients = [
+            process.env.FB_PAGE_ID || '928195650386088',
+            process.env.IG_ACCOUNT_ID || '17841427052704939'
+          ];
+          if (recipientId && !allowedRecipients.includes(recipientId)) {
+            console.log('[Security] Ignored webhook event directed to non-Khramuna recipient:', recipientId);
+            continue;
+          }
+
           // 1. Instant Synchronous Deduplication Check (BEFORE ANY AWAIT)
           const mid = webhookEvent.message?.mid;
           if (mid) {
@@ -428,22 +440,39 @@ app.post('/webhook', async (req, res) => {
           // 2. Handle Text Messages
           const message = webhookEvent.message;
 
-          // Handle Photo / Receipt attachments (e.g. Bank Payment Screenshot)
+          // Handle Photo attachments (Smart Payment Receipt vs General Pet/Chat Photo)
           if (message && !message.is_echo && message.attachments && message.attachments.length > 0) {
             const imageAttachment = message.attachments.find(a => a.type === 'image');
             if (imageAttachment && imageAttachment.payload?.url) {
               const photoUrl = imageAttachment.payload.url;
-              console.log(`[Messenger] Received image/receipt from ${senderPsid}: ${photoUrl}`);
-              
-              await notifyTelegramReceipt(photoUrl, senderPsid);
-              
-              const receiptConfirm = 'დიდი მადლობა! გადარიცხვის ქვითარი მიღებულია ❤️ თუ მისამართი და ტელეფონის ნომერი ჯერ არ მოგიწერიათ, გთხოვთ მოგვწეროთ, რომ შეკვეთა კურიერს გავატანოთ 🐾';
-              await sendMessengerMessage(senderPsid, receiptConfirm);
-              updateSession(senderPsid, 'assistant', receiptConfirm);
+              console.log('[Messenger] Received image from ' + senderPsid + ': ' + photoUrl);
+
+              // Check if user was actively in the payment/checkout flow
+              const session = getSession(senderPsid);
+              const lastMsgs = (session.history || []).slice(-6).map(m => m.text).join(' ');
+              const isWaitingPayment = lastMsgs.includes('GE05TB') ||
+                                       lastMsgs.includes('GE12BG') ||
+                                       lastMsgs.includes('გადარიცხვ') ||
+                                       lastMsgs.includes('ანგარიშზე') ||
+                                       lastMsgs.includes('ქვითარ');
+
+              if (isWaitingPayment) {
+                await notifyTelegramReceipt(photoUrl, senderPsid);
+                const receiptConfirm = 'დიდი მადლობა! გადარიცხვის ქვითარი მიღებულია ❤️ თუ მისამართი და ტელეფონის ნომერი ჯერ არ მოგიწერიათ, გთხოვთ მოგვწეროთ, რომ შეკვეთა კურიერს გავატანოთ 🐾';
+                await sendMessengerMessage(senderPsid, receiptConfirm);
+                updateSession(senderPsid, 'assistant', receiptConfirm);
+              } else {
+                console.log('[Messenger] General photo received from ' + senderPsid + ' (not in payment flow)');
+                const alertDetails = '👤 კლიენტი: ' + senderPsid + '\n🖼️ [ფოტოს ბმული](' + photoUrl + ')\nმომხმარებელმა გამოაგზავნა ფოტო (შესაძლოა ცუგას სურათი).';
+                await notifyTelegramAlert('📸 *ახალი ფოტო ჩათში (არ არის ქვითარი)*', alertDetails);
+                const petPhotoReply = 'რა საყვარელია! ❤️🐾 გთხოვთ, მოგვწეროთ რით შეგვიძლია დაგეხმაროთ, ან რომელი სასუსნავი გაინტერესებთ? ✨';
+                await sendMessengerMessage(senderPsid, petPhotoReply);
+                updateSession(senderPsid, 'assistant', petPhotoReply);
+              }
               continue;
             }
           }
-          
+
           // Handle Voice / Audio message notes (Polite instant reply)
           if (message && !message.is_echo && message.attachments && message.attachments.length > 0) {
             const audioAttachment = message.attachments.find(a => a.type === 'audio' || a.type === 'voice');
