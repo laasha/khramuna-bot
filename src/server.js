@@ -465,13 +465,45 @@ app.post('/webhook', async (req, res) => {
                 const receiptConfirm = 'დიდი მადლობა! გადარიცხვის ქვითარი მიღებულია ❤️ თუ მისამართი და ტელეფონის ნომერი ჯერ არ მოგიწერიათ, გთხოვთ მოგვწეროთ, რომ შეკვეთა კურიერს გავატანოთ 🐾';
                 await sendMessengerMessage(senderPsid, receiptConfirm);
                 updateSession(senderPsid, 'assistant', receiptConfirm);
-              } else {
-                console.log('[Messenger] General photo received from ' + senderPsid + ' (not in payment flow)');
-                const alertDetails = '👤 კლიენტი: ' + senderPsid + '\n🖼️ [ფოტოს ბმული](' + photoUrl + ')\nმომხმარებელმა გამოაგზავნა ფოტო (შესაძლოა ცუგას სურათი).';
-                await notifyTelegramAlert('📸 *ახალი ფოტო ჩათში (არ არის ქვითარი)*', alertDetails);
-                const petPhotoReply = 'რა საყვარელია! ❤️🐾 გთხოვთ, მოგვწეროთ რით შეგვიძლია დაგეხმაროთ, ან რომელი სასუსნავი გაინტერესებთ? ✨';
-                await sendMessengerMessage(senderPsid, petPhotoReply);
-                updateSession(senderPsid, 'assistant', petPhotoReply);
+                continue;
+              }
+
+              // Check if attachment is a Sticker / Like reaction
+              const isSticker = !!message.sticker_id || 
+                                !!imageAttachment.payload?.sticker_id || 
+                                (imageAttachment.name && imageAttachment.name.startsWith('sticker-'));
+
+              if (isSticker) {
+                console.log(`[Messenger] Sticker/Reaction detected from ${senderPsid}`);
+                const isPoliteClosing = lastMsgs.includes('მადლობა') || 
+                                        lastMsgs.includes('წარმატებ') || 
+                                        lastMsgs.includes('ბათუმ') || 
+                                        lastMsgs.includes('რეგიონ') ||
+                                        lastMsgs.includes('გაიხარ');
+                const stickerReply = isPoliteClosing 
+                  ? 'გაიხარეთ! ❤️🐾 თუ რამე დაგჭირდეთ თქვენი ცუგასთვის, ნებისმიერ დროს მოგვწერეთ ✨'
+                  : 'გამარჯობა! 🐾❤️ რით შეგვიძლია დაგეხმაროთ, ან რომელი ნატურალური სასუსნავი გაინტერესებთ თქვენი ცუგასთვის? ✨';
+                await sendMessengerMessage(senderPsid, stickerReply);
+                updateSession(senderPsid, 'assistant', stickerReply);
+                continue;
+              }
+
+              // Real photo sent by user (Dog photo, dental check, etc.) - Preserves full conversation context!
+              console.log('[Messenger] General pet photo received from ' + senderPsid + ' (calling AI with context)');
+              const alertDetails = '👤 კლიენტი: ' + senderPsid + '\n🖼️ [ფოტოს ბმული](' + photoUrl + ')\nმომხმარებელმა გამოაგზავნა ფოტო (შესაძლოა ცუგას სურათი).';
+              await notifyTelegramAlert('📸 *ახალი ფოტო ჩათში (არ არის ქვითარი)*', alertDetails);
+
+              const photoPrompt = '[კლიენტმა ჩატში გამოაგზავნა ფოტო, სავარაუდოდ თავისი ძაღლის სურათი. თბილად შეუქე ოთხფეხა და ბუნებრივად განაგრძე წინა დიალოგის თემა, თავიდან ნუ გააცნობ თავს ან კატალოგს]';
+              updateSession(senderPsid, 'user', '[ფოტო]');
+              try {
+                const aiResponse = await generateBotResponse(photoPrompt, session.history);
+                await sendMessengerMessage(senderPsid, aiResponse.replyText);
+                updateSession(senderPsid, 'assistant', aiResponse.replyText);
+              } catch (aiPhotoErr) {
+                console.error('[Messenger Photo AI Error]:', aiPhotoErr.message);
+                const fallbackPhotoReply = 'რა საყვარელია! ❤️🐾 რით შეგვიძლია გავახაროთ თქვენი ოთხფეხა მეგობარი? ✨';
+                await sendMessengerMessage(senderPsid, fallbackPhotoReply);
+                updateSession(senderPsid, 'assistant', fallbackPhotoReply);
               }
               continue;
             }
