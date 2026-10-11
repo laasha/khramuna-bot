@@ -39,7 +39,7 @@ import 'dotenv/config';
 import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
-import { generateBotResponse } from './services/ai.js';
+import { generateBotResponse, verifyReceiptImage } from './services/ai.js';
 import {
   replyToComment,
   sendGenericTemplate,
@@ -53,7 +53,7 @@ import {
 import { saveOrderToGoogleSheet } from './services/sheets.js';
 import { notifyTelegramOrder, notifyTelegramReceipt, notifyTelegramAlert } from './services/telegram.js';
 import { handleCommentAction, startCommentMonitor } from './services/commentMonitor.js';
-import { getOrders, getSession, getOrHydrateSession, saveOrder, updateSession } from './services/storage.js';
+import { getOrders, getSession, getOrHydrateSession, getCustomerProfile, updateCustomerProfile, getUserLatestOrder, updateOrderStatus, saveOrder, updateSession } from './services/storage.js';
 
 const PRODUCT_MAP = {
   paws: { name: 'დრაკონის თათები (100გ)', price: 18, desc: '100% ქათმის ფეხი • ბუნებრივი კოლაგენი და კბილების წმენდა' },
@@ -496,11 +496,26 @@ app.post('/webhook', async (req, res) => {
                                        lastMsgs.includes('რეკვიზიტ');
 
               if (isWaitingPayment) {
-                await notifyTelegramReceipt(photoUrl, senderPsid);
-                const receiptConfirm = 'დიდი მადლობა! გადარიცხვის ქვითარი მიღებულია ❤️ თუ მისამართი და ტელეფონის ნომერი ჯერ არ მოგიწერიათ, გთხოვთ მოგვწეროთ, რომ შეკვეთა კურიერს გავატანოთ 🐾';
-                await sendMessengerMessage(senderPsid, receiptConfirm);
-                updateSession(senderPsid, 'assistant', receiptConfirm);
-                continue;
+                console.log(`[Messenger Vision] Verifying receipt image from ${senderPsid}...`);
+                const latestOrder = getUserLatestOrder(senderPsid);
+                const expectedPrice = latestOrder ? latestOrder.price : null;
+                const ocrResult = await verifyReceiptImage(photoUrl, expectedPrice);
+                console.log(`[Messenger Vision OCR Result]:`, ocrResult);
+
+                if (ocrResult && ocrResult.isReceipt) {
+                  await notifyTelegramReceipt(photoUrl, senderPsid);
+                  if (latestOrder) {
+                    updateOrderStatus(latestOrder.id, 'CONFIRMED_PAID', `Verified ${ocrResult.amount}₾ via ${ocrResult.bank}`);
+                  }
+                  const amountBadge = ocrResult.amount ? ` (${ocrResult.amount}₾)` : '';
+                  const bankBadge = ocrResult.bank && ocrResult.bank !== 'NONE' ? ` [${ocrResult.bank}]` : '';
+                  const receiptConfirm = `დიდი მადლობა! გადარიცხვის ქვითარი${bankBadge} დამოწმებულია${amountBadge} ❤️ თუ მისამართი და ტელეფონის ნომერი ჯერ არ მოგიწერიათ, გთხოვთ მოგვწეროთ, რომ შეკვეთა კურიერს გავატანოთ 🐾`;
+                  await sendMessengerMessage(senderPsid, receiptConfirm);
+                  updateSession(senderPsid, 'assistant', receiptConfirm);
+                  continue;
+                } else {
+                  console.log(`[Messenger Vision] Image is not a verified payment receipt, proceeding to general pet photo flow`);
+                }
               }
 
               // Check if attachment is a Sticker / Like reaction
@@ -652,9 +667,20 @@ app.post('/webhook', async (req, res) => {
               continue;
             }
 
-            console.log('[Messenger] Calling Gemini AI...');
-            const aiResponse = await generateBotResponse(userText, session.history);
+            const profile = getCustomerProfile(senderPsid);
+            const activeOrder = getUserLatestOrder(senderPsid);
+
+            console.log(`[Messenger] Calling Gemini AI for ${senderPsid} with CRM & Order context...`);
+            const aiResponse = await generateBotResponse(userText, session.history, {
+              profile,
+              activeOrder,
+            });
             console.log('[Messenger] Gemini reply:', aiResponse.replyText);
+
+            // Auto-learn customer profile updates (pet name, breed, allergies)
+            if (aiResponse.customerProfileUpdates) {
+              updateCustomerProfile(senderPsid, aiResponse.customerProfileUpdates);
+            }
 
             
             if (aiResponse.isEscalated) {
@@ -676,6 +702,16 @@ app.post('/webhook', async (req, res) => {
                 const order = saveOrder({
                   userId: senderPsid,
                   ...aiResponse.order,
+                });
+                updateCustomerProfile(senderPsid, {
+                  phone: cleanPhone,
+                  preferredAddress: cleanAddress,
+                  lastOrder: {
+                    id: order.id,
+                    product: order.product,
+                    price: order.price,
+                    createdAt: order.createdAt,
+                  },
                 });
                 try {
                   await saveOrderToGoogleSheet(order);

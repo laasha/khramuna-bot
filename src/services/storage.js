@@ -257,3 +257,92 @@ export function saveFeedReply(text) {
   const trimmed = list.slice(-30);
   writeJsonFile(FEED_REPLIES_FILE, trimmed);
 }
+
+const PROFILES_FILE = path.join(DATA_DIR, 'profiles.json');
+
+/**
+ * Retrieves the customer's permanent CRM profile (pet name, breed, allergies, history).
+ */
+export function getCustomerProfile(userId) {
+  if (!userId) return null;
+  const profiles = readJsonFile(PROFILES_FILE, {});
+  return profiles[userId] || null;
+}
+
+/**
+ * Updates or merges new fields into customer CRM profile.
+ */
+export function updateCustomerProfile(userId, newFields) {
+  if (!userId || !newFields || typeof newFields !== 'object') return null;
+  const profiles = readJsonFile(PROFILES_FILE, {});
+  const existing = profiles[userId] || {
+    userId,
+    createdAt: new Date().toISOString(),
+  };
+
+  const updated = {
+    ...existing,
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (newFields.petName && typeof newFields.petName === 'string' && newFields.petName.trim() && newFields.petName !== 'უცნობი') {
+    updated.petName = newFields.petName.trim();
+  }
+  if (newFields.petType && typeof newFields.petType === 'string' && newFields.petType.trim()) {
+    updated.petType = newFields.petType.trim();
+  }
+  if (newFields.petBreed && typeof newFields.petBreed === 'string' && newFields.petBreed.trim() && newFields.petBreed !== 'უცნობი') {
+    updated.petBreed = newFields.petBreed.trim();
+  }
+  if (newFields.petAge && typeof newFields.petAge === 'string' && newFields.petAge.trim()) {
+    updated.petAge = newFields.petAge.trim();
+  }
+  if (newFields.allergies && typeof newFields.allergies === 'string' && newFields.allergies.trim()) {
+    updated.allergies = newFields.allergies.trim();
+  }
+  if (newFields.preferredAddress && typeof newFields.preferredAddress === 'string' && newFields.preferredAddress.trim()) {
+    updated.preferredAddress = newFields.preferredAddress.trim();
+  }
+  if (newFields.phone && typeof newFields.phone === 'string' && newFields.phone.trim()) {
+    updated.phone = newFields.phone.trim();
+  }
+  if (newFields.lastOrder) {
+    updated.lastOrder = newFields.lastOrder;
+    updated.totalOrders = (updated.totalOrders || 0) + 1;
+  }
+
+  profiles[userId] = updated;
+  writeJsonFile(PROFILES_FILE, profiles);
+  console.log(`[Storage] Updated permanent customer profile for ${userId}:`, JSON.stringify(updated));
+  return updated;
+}
+
+/**
+ * Retrieves customer's latest order from storage.
+ */
+export function getUserLatestOrder(userId) {
+  if (!userId) return null;
+  const orders = getOrders();
+  const userOrders = orders.filter((o) => o.userId === userId);
+  if (userOrders.length === 0) return null;
+  return userOrders[userOrders.length - 1];
+}
+
+/**
+ * Updates order status (e.g. from PENDING to PAID / VERIFIED).
+ */
+export function updateOrderStatus(orderId, status, extraNotes = '') {
+  const orders = readJsonFile(ORDERS_FILE, []);
+  const order = orders.find((o) => o.id === orderId);
+  if (order) {
+    order.status = status;
+    if (extraNotes) {
+      order.verificationNotes = extraNotes;
+    }
+    order.updatedAt = new Date().toISOString();
+    writeJsonFile(ORDERS_FILE, orders);
+    syncOrdersToCsv();
+    return order;
+  }
+  return null;
+}

@@ -7,8 +7,42 @@ const GEMINI_BACKUP_URL = 'https://generativelanguage.googleapis.com/v1beta/mode
 /**
  * System instruction defining the Khramuna Founder/Consultant persona and natural conversation.
  */
-function buildSystemPrompt() {
-  return `შენ ხარ „ხრამუნას“ (Khramuna) წამყვანი კონსულტანტი, ზოო-ნუტრიციოლოგი და მზრუნველი ექსპერტი.
+function buildSystemPrompt(contextOptions = {}) {
+  const profile = contextOptions.profile;
+  const activeOrder = contextOptions.activeOrder;
+
+  let profileSnippet = '';
+  if (profile) {
+    profileSnippet = `
+==================== კლიენტის მუდმივი პროფილი & CRM მეხსიერება ====================
+ბაზიდან ამოცნობილია კლიენტის მონაცემები:
+${profile.petName ? `• ცუგას/ფისოს სახელი: ${profile.petName}` : ''}
+${profile.petBreed ? `• ჯიში: ${profile.petBreed}` : ''}
+${profile.allergies ? `• ალერგიები: ${profile.allergies}` : ''}
+${profile.phone ? `• ტელეფონი: ${profile.phone}` : ''}
+${profile.preferredAddress ? `• მისამართი: ${profile.preferredAddress}` : ''}
+${profile.lastOrder ? `• წინა შეკვეთა: ${profile.lastOrder.product || ''} (${profile.lastOrder.createdAt || ''})` : ''}
+★ ოქროს წესი: გამოიყენე ეს ინფორმაცია ბუნებრივად, თბილად და მზრუნველად! თუ სახელი ცნობილია, მიმართე ოთხფეხას სახელით („როგორ გრძნობს თავს ${profile.petName || 'თქვენი ოთხფეხა'}?“). თუ ალერგია ცნობილია, არასოდეს შესთავაზო ალერგიული პროდუქტი.
+`;
+  }
+
+  let orderSnippet = '';
+  if (activeOrder) {
+    orderSnippet = `
+==================== აქტიური შეკვეთის სტატუსი (Order Tracking) ====================
+ამ კლიენტს გაფორმებული აქვს შეკვეთა:
+• ID: ${activeOrder.id}
+• პროდუქტი: ${activeOrder.product} (${activeOrder.price}₾)
+• მისამართი: ${activeOrder.address}
+• ტელეფონი: ${activeOrder.phone}
+• სტატუსი: ${activeOrder.status}
+• თარიღი: ${activeOrder.createdAt}
+თუ კლიენტი კითხულობს „სად არის კურიერი?“, „როდის მოვა?“, „ჩემი შეკვეთა რა ეტაპზეა?“, „გამოვიდა კურიერი?“:
+დაამშვიდე და დეტალურად აუხსენი: შეკვეთა [${activeOrder.product}] კურიერს უკვე გადაცემულია! მიტანის საათებია 12:00-დან 19:00-მდე და კურიერი მოახლოებამდე 20-30 წუთით ადრე აუცილებლად დაურეკავს ნომერზე [${activeOrder.phone}] 📞
+`;
+  }
+
+  return `${profileSnippet}${orderSnippet}შენ ხარ „ხრამუნას“ (Khramuna) წამყვანი კონსულტანტი, ზოო-ნუტრიციოლოგი და მზრუნველი ექსპერტი.
 „ხრამუნა“ არის საქართველოში დამზადებული 100% ნატურალური, დაბალ ტემპერატურაზე დეჰიდრირებული (გამოყვანილი) ხორცის პრემიუმ სასუსნავების ბრენდი ძაღლებისთვის და კატებისთვის.
 
 ==================== 1. მიმართვის ფორმა და ენობრივი სტანდარტი (მკაცრი Multilingual) ====================
@@ -290,7 +324,8 @@ function buildSystemPrompt() {
   "replyText": "თქვენი დახვეწილი პასუხი (თქვენობით, ძვირფასოს გარეშე, მკაცრად კლიენტის ენაზე, ცოცხალი და არა-დაზეპირებული!)",
   "isOrderReady": false,
   "isEscalated": false,
-  "order": null // { product: "დრაკონის თათები (100გ)", price: 18, customerName: "", address: "ვაჟა-ფშაველას 10", phone: "597...", paymentMethod: "გადარიცხვა", deliveryNotes: "სართული 3", city: "თბილისი", petInfo: "როკი" }
+  "order": null, // { product: "დრაკონის თათები (100გ)", price: 18, customerName: "", address: "ვაჟა-ფშაველას 10", phone: "597...", paymentMethod: "გადარიცხვა", deliveryNotes: "სართული 3", city: "თბილისი", petInfo: "როკი" }
+  "customerProfileUpdates": null // { petName: "როკი", petBreed: "ფრანგული ბულდოგი", petType: "dog", petAge: "5 თვის", allergies: "ქათამი" } (შეავსე მხოლოდ თუ კლიენტმა ახალი დეტალი ახსენა თავის ცხოველზე)
 }`;
 }
 
@@ -318,14 +353,14 @@ function safeParseJson(text) {
   }
 }
 
-async function callGemini(apiKey, contents, attempt = 1, isAudio = false) {
+async function callGemini(apiKey, contents, attempt = 1, isAudio = false, contextOptions = {}) {
   let targetUrl = isAudio ? GEMINI_AUDIO_URL : (attempt === 1 ? GEMINI_TEXT_URL : GEMINI_BACKUP_URL);
   const res = await fetch(`${targetUrl}?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
       system_instruction: {
-        parts: [{ text: buildSystemPrompt() }],
+        parts: [{ text: buildSystemPrompt(contextOptions) }],
       },
       contents,
       generationConfig: {
@@ -343,7 +378,7 @@ async function callGemini(apiKey, contents, attempt = 1, isAudio = false) {
     if ((res.status === 429 || res.status === 503 || res.status === 404) && attempt === 1) {
       console.log('[AI] Retrying with backup Gemini model after 1500ms...');
       await new Promise((resolve) => setTimeout(resolve, 1500));
-      return callGemini(apiKey, contents, 2, isAudio);
+      return callGemini(apiKey, contents, 2, isAudio, contextOptions);
     }
 
     throw new Error(`Gemini error: ${res.status}`);
@@ -361,7 +396,7 @@ async function callGemini(apiKey, contents, attempt = 1, isAudio = false) {
 /**
  * Handles incoming customer message using Gemini Flash.
  */
-export async function generateBotResponse(input, sessionHistory = []) {
+export async function generateBotResponse(input, sessionHistory = [], contextOptions = {}) {
   const apiKey = process.env.GEMINI_API_KEY;
 
   const isAudioInput = typeof input === 'object' && input !== null && !!input.audio;
@@ -418,7 +453,7 @@ export async function generateBotResponse(input, sessionHistory = []) {
   }
 
   try {
-    const parsed = await callGemini(apiKey, contents, 1, isAudioInput);
+    const parsed = await callGemini(apiKey, contents, 1, isAudioInput, contextOptions);
     if (parsed && parsed.replyText) {
       // Deterministic cleanup: strip awkward calques & nonsensical phrases
       // Strip robotic repetitive closing question if last assistant message already had it
@@ -648,3 +683,70 @@ export async function generateCommentReplies({ commenterName = '', commentText =
   return generateFeedCommentReply({ commenterName, commentText, postText, recentReplies });
 }
 
+
+/**
+ * Uses Gemini 2.5 Flash Vision to inspect payment receipts, extract bank & amount,
+ * and verify transfer status against expected order details.
+ */
+export async function verifyReceiptImage(imageUrl, expectedAmount = null) {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey || !imageUrl) return { isReceipt: false };
+
+  try {
+    const imgRes = await fetch(imageUrl);
+    if (!imgRes.ok) return { isReceipt: false };
+    const arrayBuf = await imgRes.arrayBuffer();
+    const base64Data = Buffer.from(arrayBuf).toString('base64');
+    const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+    const mimeType = contentType.split(';')[0].trim() || 'image/jpeg';
+
+    const prompt = `შეაფასე ეს სურათი: არის თუ არა ეს საბანკო გადარიცხვის ქვითარი (TBC Bank, Bank of Georgia, BOG ან სხვა ქართული ბანკი)?
+ამოიღე:
+1. bank: ბანკის დასახელება (TBC / BOG / OTHER / NONE)
+2. amount: გადარიცხული თანხა ლარში (რიცხვი)
+3. recipient: მიმღების სახელი ან ანგარიში
+4. isSuccessful: გადარიცხვა წარმატებულია თუ მოლოდინში/ჩაშლილი
+5. isReceipt: არის თუ არა ნამდვილი ქვითარი (თუ ძაღლის ფოტოა, მემი ან სხვა რამეა, isReceipt უნდა იყოს false!)
+${expectedAmount ? `მოსალოდნელი თანხაა: ${expectedAmount}₾.` : ''}
+
+დააბრუნე მხოლოდ სუფთა JSON ობიექტი:
+{
+  "isReceipt": true,
+  "bank": "TBC",
+  "amount": 49.50,
+  "recipient": "ლ.ხ. / ხრამუნა",
+  "isSuccessful": true,
+  "matchesExpected": true,
+  "note": "მოკლე ქართული შეფასება"
+}`;
+
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{
+          role: 'user',
+          parts: [
+            { inlineData: { mimeType, data: base64Data } },
+            { text: prompt }
+          ]
+        }],
+        generationConfig: {
+          temperature: 0.1,
+          responseMimeType: 'application/json'
+        }
+      })
+    });
+
+    if (!res.ok) return { isReceipt: false };
+    const data = await res.json();
+    const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) return { isReceipt: false };
+    const cleanJson = text.replace(/^\`\`\`json/i, '').replace(/\`\`\`$/i, '').trim();
+    const parsed = JSON.parse(cleanJson);
+    return parsed;
+  } catch (err) {
+    console.error('[AI Receipt OCR Error]:', err.message);
+    return { isReceipt: false };
+  }
+}
