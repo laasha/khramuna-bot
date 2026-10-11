@@ -53,7 +53,7 @@ import {
 import { saveOrderToGoogleSheet } from './services/sheets.js';
 import { notifyTelegramOrder, notifyTelegramReceipt, notifyTelegramAlert } from './services/telegram.js';
 import { handleCommentAction, startCommentMonitor } from './services/commentMonitor.js';
-import { getOrders, getSession, getOrHydrateSession, getCustomerProfile, updateCustomerProfile, getUserLatestOrder, updateOrderStatus, saveOrder, updateSession } from './services/storage.js';
+import { getOrders, getSession, getOrHydrateSession, getCustomerProfile, updateCustomerProfile, getUserLatestOrder, updateOrderStatus, pauseBotForUser, isBotPausedForUser, saveOrder, updateSession } from './services/storage.js';
 
 const PRODUCT_MAP = {
   paws: { name: 'დრაკონის თათები (100გ)', price: 18, desc: '100% ქათმის ფეხი • ბუნებრივი კოლაგენი და კბილების წმენდა' },
@@ -374,8 +374,17 @@ app.post('/webhook', async (req, res) => {
           const senderPsid = webhookEvent.sender?.id;
           if (!senderPsid) continue;
 
-          // Ignore echo events sent by our own bot/page
+          // Detect if message was sent manually by human page admin (echo event)
           if (webhookEvent.message?.is_echo) {
+            const recipientPsid = webhookEvent.recipient?.id;
+            const allowedRecipients = [
+              process.env.FB_PAGE_ID || '928195650386088',
+              process.env.IG_ACCOUNT_ID || '17841427052704939'
+            ];
+            if (recipientPsid && !allowedRecipients.includes(recipientPsid)) {
+              console.log(`[Human Takeover] Admin manually replied to ${recipientPsid}. Pausing bot for 60 minutes.`);
+              pauseBotForUser(recipientPsid, 60);
+            }
             continue;
           }
 
@@ -388,6 +397,12 @@ app.post('/webhook', async (req, res) => {
           ];
           if (recipientId && !allowedRecipients.includes(recipientId)) {
             console.log('[Security] Ignored webhook event directed to non-Khramuna recipient:', recipientId);
+            continue;
+          }
+
+          // Human Takeover check: if human admin recently chatted with this user, let human converse!
+          if (isBotPausedForUser(senderPsid)) {
+            console.log(`[Human Takeover] Bot is paused for user ${senderPsid}. Letting human admin converse without bot interference.`);
             continue;
           }
 
@@ -698,7 +713,10 @@ app.post('/webhook', async (req, res) => {
 
               // Strict 4-point guard: Product, Price, Phone, Address must all be verified!
               const isValidPhone = cleanPhone.length === 9 || (cleanPhone.startsWith('995') && cleanPhone.length === 12);
-              if (cleanProduct.length >= 3 && !cleanProduct.includes('უცნობი') && orderPrice > 0 && isValidPhone && cleanAddress.length >= 5) {
+              const isValidProduct = cleanProduct.length >= 3 && !cleanProduct.includes('უცნობი') && orderPrice > 0;
+              const isValidAddress = cleanAddress.length >= 5;
+
+              if (isValidProduct && isValidPhone && isValidAddress) {
                 const order = saveOrder({
                   userId: senderPsid,
                   ...aiResponse.order,
@@ -724,7 +742,14 @@ app.post('/webhook', async (req, res) => {
                   console.error('[Telegram Non-blocking Error]:', tgErr.message);
                 }
               } else {
-                console.warn('[Messenger] Order blocked by validation guard:', aiResponse.order);
+                // SILENT ORDER DROP RESCUE: Never tell user order is confirmed if validation fails!
+                console.warn('[Messenger Guard] Order blocked by validation guard:', aiResponse.order);
+                if (!isValidPhone) {
+                  aiResponse.replyText = 'დიდი მადლობა! 🐾 შეკვეთის დასადასტურებლად გთხოვთ გადაამოწმოთ თქვენი ტელეფონის ნომერი — როგორც ჩანს, ციფრი აკლია ან არასწორია (საქართველოს მობილურის ნომერი 9-ნიშნა უნდა იყოს, მაგ: 597123456) 📞';
+                } else if (!isValidAddress) {
+                  aiResponse.replyText = 'დიდი მადლობა! 🐾 გთხოვთ მიტანის მისამართი ცოტა უფრო დეტალურად მოგვწეროთ (ქუჩა, კორპუსი/სახლი ან ორიენტირი), რომ კურიერმა იოლად მოგაგნოთ 📍';
+                }
+                aiResponse.isOrderReady = false;
               }
             }
 

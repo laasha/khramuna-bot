@@ -346,3 +346,37 @@ export function updateOrderStatus(orderId, status, extraNotes = '') {
   }
   return null;
 }
+
+// Human admin live takeover: userId -> timestamp (ms) until which bot is paused
+const humanPauses = new Map();
+
+/**
+ * Pauses the bot for a specific user when a human admin replies manually.
+ */
+export function pauseBotForUser(userId, durationMinutes = 60) {
+  if (!userId) return;
+  const until = Date.now() + durationMinutes * 60 * 1000;
+  humanPauses.set(userId, until);
+  console.log(`[Storage] Bot paused for user ${userId} until ${new Date(until).toISOString()} (human admin active)`);
+}
+
+/**
+ * Checks if the bot is currently paused for a user due to human intervention.
+ */
+export function isBotPausedForUser(userId) {
+  if (!userId) return false;
+  const until = humanPauses.get(userId);
+  if (!until) return false;
+  if (Date.now() > until) {
+    humanPauses.delete(userId);
+    return false;
+  }
+  return true;
+}
+
+/**
+ * Unpauses bot manually if needed.
+ */
+export function unpauseBotForUser(userId) {
+  if (userId) humanPauses.delete(userId);
+}

@@ -1,0 +1,27 @@
+{
+  "paws": {
+    "name": "დრაკონის თათები",
+    "inStock": true,
+    "preorderDays": 0
+  },
+  "lung": {
+    "name": "ღრუბელი",
+    "inStock": true,
+    "preorderDays": 0
+  },
+  "liver": {
+    "name": "სუპერ-კუბები",
+    "inStock": true,
+    "preorderDays": 0
+  },
+  "powder": {
+    "name": "ჯადოსნური პუდრა",
+    "inStock": true,
+    "preorderDays": 0
+  },
+  "full_pack": {
+    "name": "Full Pack (სრული ნაკრები)",
+    "inStock": true,
+    "preorderDays": 0
+  }
+}
