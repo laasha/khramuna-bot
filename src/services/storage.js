@@ -102,6 +102,83 @@ syncOrdersToCsv();
 // In-memory cache for fast, seamless context persistence across warm serverless requests
 const memorySessions = new Map();
 
+/**
+ * Hydrates conversation history directly from Meta Graph API for zero-cost long-term memory.
+ * Overcomes Vercel serverless cold starts and recovers context across days of silence.
+ */
+export async function hydrateSessionFromMeta(userId) {
+  const token = process.env.FB_PAGE_ACCESS_TOKEN;
+  const pageId = process.env.FB_PAGE_ID || '928195650386088';
+  if (!token || !userId) return { history: [], lastActivity: Date.now() };
+
+  try {
+    const url = `https://graph.facebook.com/v20.0/${pageId}/conversations?user_id=${userId}&fields=id,messages.limit(15){message,from,created_time}&access_token=${token}`;
+    const res = await fetch(url);
+    if (!res.ok) {
+      console.warn(`[Storage] Meta hydration HTTP ${res.status} for user ${userId}`);
+      return { history: [], lastActivity: Date.now() };
+    }
+    const json = await res.json();
+    const rawMessages = json.data?.[0]?.messages?.data;
+    if (!Array.isArray(rawMessages) || rawMessages.length === 0) {
+      return { history: [], lastActivity: Date.now() };
+    }
+
+    // Meta returns messages newest first; reverse for chronological order
+    const history = rawMessages
+      .slice()
+      .reverse()
+      .map((m) => {
+        const isAssistant = m.from?.id === pageId;
+        const text = m.message ? m.message.trim() : '[მედია/სურათი]';
+        return {
+          role: isAssistant ? 'assistant' : 'user',
+          text,
+          timestamp: m.created_time,
+        };
+      })
+      .filter((m) => m.text.length > 0);
+
+    const session = {
+      history,
+      lastActivity: Date.now(),
+      hydratedFromMeta: true,
+    };
+    memorySessions.set(userId, session);
+
+    try {
+      const sessions = readJsonFile(SESSIONS_FILE, {});
+      sessions[userId] = session;
+      writeJsonFile(SESSIONS_FILE, sessions);
+    } catch (e) {}
+
+    console.log(`[Storage] Successfully hydrated ${history.length} messages from Meta for user ${userId}`);
+    return session;
+  } catch (err) {
+    console.error(`[Storage] Failed to hydrate session from Meta for ${userId}:`, err.message);
+    return { history: [], lastActivity: Date.now() };
+  }
+}
+
+/**
+ * Retrieves customer session, actively hydrating from Meta if local cache is cold/empty.
+ */
+export async function getOrHydrateSession(userId) {
+  if (memorySessions.has(userId)) {
+    const s = memorySessions.get(userId);
+    if (s.history && s.history.length > 0) return s;
+  }
+  const sessions = readJsonFile(SESSIONS_FILE, {});
+  if (sessions[userId] && sessions[userId].history && sessions[userId].history.length > 0) {
+    memorySessions.set(userId, sessions[userId]);
+    return sessions[userId];
+  }
+
+  // Cold start on Vercel serverless -> Hydrate from Meta Graph API
+  const hydrated = await hydrateSessionFromMeta(userId);
+  return hydrated;
+}
+
 export function getSession(userId) {
   if (memorySessions.has(userId)) {
     return memorySessions.get(userId);

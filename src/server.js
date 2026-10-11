@@ -1,5 +1,40 @@
 const processedMids = new Set();
 const userTextLocks = new Map();
+
+// Smart Debounce Queue for rapid consecutive user messages (e.g. 2-3 short texts sent within 1.8s)
+const userMessageQueues = new Map();
+
+function enqueueUserMessage(senderPsid, text) {
+  return new Promise((resolve) => {
+    let queue = userMessageQueues.get(senderPsid);
+    if (!queue) {
+      queue = {
+        messages: [],
+        timer: null,
+        resolves: [],
+      };
+      userMessageQueues.set(senderPsid, queue);
+    }
+
+    queue.messages.push(text);
+    queue.resolves.push(resolve);
+
+    if (queue.timer) {
+      clearTimeout(queue.timer);
+    }
+
+    queue.timer = setTimeout(() => {
+      userMessageQueues.delete(senderPsid);
+      const combinedText = queue.messages.join(' \n ');
+      const resolvesToCall = queue.resolves;
+      resolvesToCall[0]({ isPrimary: true, combinedText });
+      for (let i = 1; i < resolvesToCall.length; i++) {
+        resolvesToCall[i]({ isPrimary: false, combinedText: null });
+      }
+    }, 1800); // 1.8 second debounce window
+  });
+}
+
 import 'dotenv/config';
 import express from 'express';
 import fs from 'node:fs';
@@ -18,7 +53,7 @@ import {
 import { saveOrderToGoogleSheet } from './services/sheets.js';
 import { notifyTelegramOrder, notifyTelegramReceipt, notifyTelegramAlert } from './services/telegram.js';
 import { handleCommentAction, startCommentMonitor } from './services/commentMonitor.js';
-import { getOrders, getSession, saveOrder, updateSession } from './services/storage.js';
+import { getOrders, getSession, getOrHydrateSession, saveOrder, updateSession } from './services/storage.js';
 
 const PRODUCT_MAP = {
   paws: { name: 'დრაკონის თათები (100გ)', price: 18, desc: '100% ქათმის ფეხი • ბუნებრივი კოლაგენი და კბილების წმენდა' },
@@ -404,7 +439,7 @@ app.post('/webhook', async (req, res) => {
               const product = PRODUCT_MAP[productKey];
 
               if (product) {
-                const session = getSession(senderPsid);
+                const session = await getOrHydrateSession(senderPsid);
                 updateSession(senderPsid, 'user', `ავირჩიე შეკვეთა: ${product.name}`);
 
                 const confirmText = `შესანიშნავი არჩევანია! 🐾\nთქვენი არჩევანი: ${product.name} — ${product.price}₾.\n\nგთხოვთ მომწეროთ მიტანის მისამართი და ტელეფონის ნომერი, კურიერს გავატანთ და ხვალვე თქვენთან იქნება 📍📞`;
@@ -509,14 +544,43 @@ app.post('/webhook', async (req, res) => {
             }
           }
 
-          // Handle Voice / Audio message notes (Polite instant reply)
+          // Handle Voice / Audio message notes (Gemini 2.5 Flash Multimodal Audio)
           if (message && !message.is_echo && message.attachments && message.attachments.length > 0) {
             const audioAttachment = message.attachments.find(a => a.type === 'audio' || a.type === 'voice');
-            if (audioAttachment) {
-              console.log(`[Messenger] Received voice note from ${senderPsid}`);
-              const voiceReply = 'გამარჯობა! 🐾 სამწუხაროდ, ხმოვანი შეტყობინების მოსმენა ამ წუთას არ შემიძლია. გთხოვთ, მოგვწეროთ ტექსტურად და სიამოვნებით დაგეხმარებით ❤️';
-              await sendMessengerMessage(senderPsid, voiceReply);
-              updateSession(senderPsid, 'assistant', voiceReply);
+            if (audioAttachment && audioAttachment.payload?.url) {
+              const audioUrl = audioAttachment.payload.url;
+              console.log(`[Messenger] Processing voice note from ${senderPsid}:`, audioUrl);
+              const session = await getOrHydrateSession(senderPsid);
+              await sendSenderAction(senderPsid, 'typing_on').catch(() => {});
+
+              try {
+                const audioRes = await fetch(audioUrl);
+                if (!audioRes.ok) throw new Error(`HTTP ${audioRes.status}`);
+                const arrayBuf = await audioRes.arrayBuffer();
+                const base64Audio = Buffer.from(arrayBuf).toString('base64');
+                const rawType = audioRes.headers.get('content-type') || 'audio/mp4';
+                const cleanType = rawType.split(';')[0].trim() || 'audio/mp4';
+
+                updateSession(senderPsid, 'user', '[ხმოვანი შეტყობინება]');
+                await notifyTelegramAlert('🎤 *ხმოვანი შეტყობინება ჩათში*', `👤 კლიენტი: ${senderPsid}\n[აუდიოს ბმული](${audioUrl})\nბოტი ამუშავებს ხმოვან შეტყობინებას Gemini AI-ით.`);
+
+                const aiResponse = await generateBotResponse({
+                  text: '[მომხმარებელმა გამოაგზავნა ხმოვანი შეტყობინება. მოუსმინე ყურადღებით, გაიგე მისი სათქმელი და უპასუხე როგორც ხრამუნას კონსულტანტმა ქართულ ენაზე.]',
+                  audio: {
+                    mimeType: cleanType,
+                    data: base64Audio,
+                  },
+                }, session.history);
+
+                console.log('[Messenger] Gemini reply to voice note:', aiResponse.replyText);
+                await sendMessengerMessage(senderPsid, aiResponse.replyText);
+                updateSession(senderPsid, 'assistant', aiResponse.replyText);
+              } catch (audioErr) {
+                console.error('[Messenger Audio Error]:', audioErr.message);
+                const voiceFallback = 'გამარჯობა! 🐾 თქვენი ხმოვანი შეტყობინება მივიღეთ. ტექნიკური მიზეზით მოსმენა ვერ მოხერხდა — თუ არ შეწუხდებით, ტექსტურად მოგვწერეთ და სიამოვნებით დაგეხმარებით ❤️';
+                await sendMessengerMessage(senderPsid, voiceFallback);
+                updateSession(senderPsid, 'assistant', voiceFallback);
+              }
               continue;
             }
 
@@ -530,10 +594,20 @@ app.post('/webhook', async (req, res) => {
             }
           }
           if (message && !message.is_echo && message.text) {
-            const userText = message.text.trim();
-            console.log(`[Messenger] Processing message from ${senderPsid}: "${userText}"`);
+            const rawUserText = message.text.trim();
+            console.log(`[Messenger] Queuing message from ${senderPsid}: "${rawUserText}"`);
 
-            const session = getSession(senderPsid);
+            // Smart Debounce: buffer rapid sequential messages within 1.8s
+            const debounced = await enqueueUserMessage(senderPsid, rawUserText);
+            if (!debounced.isPrimary) {
+              console.log(`[Messenger Debounce] Suppressed sub-message for ${senderPsid} (aggregated into batch)`);
+              continue;
+            }
+
+            const userText = debounced.combinedText;
+            console.log(`[Messenger] Processing aggregated message from ${senderPsid}: "${userText}"`);
+
+            const session = await getOrHydrateSession(senderPsid);
             updateSession(senderPsid, 'user', userText);
 
             // Fast-path: Common courtesies (instant, warm, human, zero API overhead)
