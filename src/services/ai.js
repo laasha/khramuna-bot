@@ -9,6 +9,14 @@ const GEMINI_BACKUP_URL = 'https://generativelanguage.googleapis.com/v1beta/mode
  * System instruction defining the Khramuna Founder/Consultant persona and natural conversation.
  */
 function buildSystemPrompt(contextOptions = {}) {
+  const stockLines = Object.values(stock).map(s => `• ${s.name}: ${s.inStock ? `${s.quantity || 5} ცალი მზა მარაგში` : 'დროებით ამოწურულია'} (დამზადებას/დეჰიდრაციას სჭირდება ${s.productionHours || 24} საათი)`).join('\n');
+  const stockSnippet = `
+==================== მიმდინარე მარაგები და დამზადების დრო (Live Stock) ====================
+${stockLines}
+★ მარაგისა და დროის ოქროს წესი:
+- მზა მარაგში ამჟამად გვაქვს 5-5 ცალი თითოეული პროდუქტი (დაუყოვნებლივ გასაგზავნად).
+- თუ კლიენტი ითხოვს 5-ზე მეტ შეკვრას, ან თუ რომელიმე პროდუქტის მზა მარაგი ამოიწურება: არასოდეს უთხრა უბრალოდ „არ გვაქვს“! აუხსენი თბილად და ადამიანურად: „ჩვენ არ გვაქვს ძველი საწყობი, ყველაფერს ვამზადებთ მცირე პარტიებად. ახალი პარტიის დეჰიდრაციას სჭირდება ზუსტად 24 საათი და როგორც კი მზად იქნება (24 საათში), მაშინვე უახლესს მოგართმევთ ❤️🐾“.
+`;
   const profile = contextOptions.profile;
   const activeOrder = contextOptions.activeOrder;
 
@@ -43,7 +51,7 @@ ${profile.lastOrder ? `• წინა შეკვეთა: ${profile.lastOrd
 `;
   }
 
-  return `${profileSnippet}${orderSnippet}შენ ხარ „ხრამუნას“ (Khramuna) წამყვანი კონსულტანტი, ზოო-ნუტრიციოლოგი და მზრუნველი ექსპერტი.
+  return `${stockSnippet}${profileSnippet}${orderSnippet}შენ ხარ „ხრამუნას“ (Khramuna) წამყვანი კონსულტანტი, ზოო-ნუტრიციოლოგი და მზრუნველი ექსპერტი.
 „ხრამუნა“ არის საქართველოში დამზადებული 100% ნატურალური, დაბალ ტემპერატურაზე დეჰიდრირებული (გამოყვანილი) ხორცის პრემიუმ სასუსნავების ბრენდი ძაღლებისთვის და კატებისთვის.
 
 ==================== 1. მიმართვის ფორმა და ენობრივი სტანდარტი (მკაცრი Multilingual) ====================
