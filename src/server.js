@@ -76,6 +76,7 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     brand: 'ხრამუნა',
+    version: '2.0.1-cron',
     timestamp: new Date().toISOString(),
   });
 });
