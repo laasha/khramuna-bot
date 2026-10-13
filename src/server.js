@@ -31,7 +31,7 @@ function enqueueUserMessage(senderPsid, text) {
       for (let i = 1; i < resolvesToCall.length; i++) {
         resolvesToCall[i]({ isPrimary: false, combinedText: null });
       }
-    }, 1800); // 1.8 second debounce window
+    }, 3200); // 3.2 second debounce window (aggregates rapid multi-message thoughts)
   });
 }
 
@@ -52,7 +52,7 @@ import {
 } from './services/facebook.js';
 import { saveOrderToGoogleSheet } from './services/sheets.js';
 import { notifyTelegramOrder, notifyTelegramReceipt, notifyTelegramAlert } from './services/telegram.js';
-import { handleCommentAction, startCommentMonitor } from './services/commentMonitor.js';
+import { handleCommentAction, startCommentMonitor, checkNewComments } from './services/commentMonitor.js';
 import { getOrders, getSession, getOrHydrateSession, getCustomerProfile, updateCustomerProfile, getUserLatestOrder, updateOrderStatus, pauseBotForUser, isBotPausedForUser, saveOrder, updateSession } from './services/storage.js';
 
 const PRODUCT_MAP = {
@@ -78,6 +78,18 @@ app.get('/health', (req, res) => {
     brand: 'ხრამუნა',
     timestamp: new Date().toISOString(),
   });
+});
+
+// Scheduled Cron Endpoint for Vercel Cron (checks missed comments every 10 mins)
+app.get('/api/cron-comments', async (req, res) => {
+  try {
+    console.log('[Cron] Running scheduled checkNewComments sweep...');
+    await checkNewComments();
+    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  } catch (err) {
+    console.error('[Cron Error]:', err.message);
+    res.status(500).json({ status: 'error', error: err.message });
+  }
 });
 
 // Official Privacy Policy & User Data Deletion for Meta App Review compliance
@@ -617,9 +629,17 @@ app.post('/webhook', async (req, res) => {
             // Handle Stickers, thumbs up, videos or other non-text attachments (prevent ghosting)
             if (!message.text && !message.attachments.some(a => a.type === 'image')) {
               console.log(`[Messenger] Received non-image/non-audio attachment (sticker/like/media) from ${senderPsid}`);
-              const stickerReply = 'გამარჯობა! 🐾❤️ რით შეგვიძლია დაგეხმაროთ, ან რომელი ნატურალური სასუსნავი გაინტერესებთ თქვენი ცუგასთვის? ✨';
-              await sendMessengerMessage(senderPsid, stickerReply);
-              updateSession(senderPsid, 'assistant', stickerReply);
+              const session = await getOrHydrateSession(senderPsid);
+              const sessionHistory = session.history || [];
+              if (sessionHistory.length > 0) {
+                // If conversation is already active or closed, acknowledge with warm emoji without restarting sales pitch
+                await sendMessengerMessage(senderPsid, '❤️🐾');
+                updateSession(senderPsid, 'assistant', '❤️🐾');
+              } else {
+                const stickerReply = 'გამარჯობა! 🐾❤️ რით შეგვიძლია დაგეხმაროთ, ან რომელი ნატურალური სასუსნავი გაინტერესებთ თქვენი ცუგასთვის? ✨';
+                await sendMessengerMessage(senderPsid, stickerReply);
+                updateSession(senderPsid, 'assistant', stickerReply);
+              }
               continue;
             }
           }
@@ -644,10 +664,73 @@ app.post('/webhook', async (req, res) => {
             const cleanText = userText.toLowerCase().replace(/[.,!?;:()]/g, '').trim();
             const thanksList = ['მადლობა', 'დიდი მადლობა', 'მადლობთ', 'გაიხარე', 'გაიხარეთ', 'მადლობა დიდი'];
             if (thanksList.includes(cleanText)) {
-              const thankReply = 'არაფრის, გაახარეთ თქვენი ცუგა! ❤️ თუ რამე დაგჭირდეთ, ნებისმიერ დროს მომწერეთ.';
+              // Anti-stutter guard: If assistant already sent a warm closing/farewell message right before this, suppress duplicate reply!
+              const sessionHistory = session.history || [];
+              const lastAssistant = sessionHistory.slice().reverse().find(m => m.sender === 'assistant');
+              if (lastAssistant) {
+                const recentFarewells = ['გაახარეთ თქვენი ცუგა', 'კარგი საღამო', 'კარგი დღე', 'დაველოდებით თქვენს შეტყობინებას', 'ნებისმიერ დროს მომწერეთ', 'მშვიდობით'];
+                if (recentFarewells.some(fw => lastAssistant.text.includes(fw))) {
+                  console.log(`[Messenger Debounce] Suppressed duplicate consecutive thank-you closing for ${senderPsid}`);
+                  continue;
+                }
+              }
+
+              // Check if order was already confirmed/placed
+              const historyText = (session.history || []).slice(-6).map(m => m.text).join(' ');
+              const orderAlreadyPlaced = historyText.includes('გაფორმებულია') ||
+                                         historyText.includes('დადასტურებულია') ||
+                                         historyText.includes('კურიერს გავატანთ') ||
+                                         historyText.includes('შეკვეთის ჩეკი') ||
+                                         historyText.includes('ნდობისთვის');
+              if (orderAlreadyPlaced) {
+                const thankReply = 'არაფრის, გაახარეთ თქვენი ცუგა! ❤️ თუ რამე დაგჭირდეთ, ნებისმიერ დროს მომწერეთ.';
+                await sendMessengerMessage(senderPsid, thankReply);
+                updateSession(senderPsid, 'assistant', thankReply);
+                continue;
+              }
+              // If customer is still browsing/inquiring (e.g. asked price/grams/delivery) and says thanks:
+              // Don't kill the sale! Friendly nudge to close!
+              const thankReply = 'გაიხარეთ! ❤️🐾 თუ გნებავთ, შეკვეთას სიამოვნებით გაგიფორმებთ და დღესვე/ხვალვე მოგართმევთ კურიერით — ხომ არ გავამზადოთ თქვენთვის? ✨';
               await sendMessengerMessage(senderPsid, thankReply);
               updateSession(senderPsid, 'assistant', thankReply);
               continue;
+            }
+
+            // Fast-path: Goodbyes & Farewell Ping-Pong Guard
+            const goodbyeList = ['კარგად', 'კარგად იყავით', 'კარგად ბრძანდებოდეთ', 'ნახვამდის', 'დროებით', 'წარმატებები'];
+            if (goodbyeList.includes(cleanText)) {
+              const sessionHistory = session.history || [];
+              const lastAssistant = sessionHistory.slice().reverse().find(m => m.sender === 'assistant');
+              if (lastAssistant) {
+                const recentFarewells = ['გაახარეთ თქვენი ცუგა', 'მშვიდობიან და ბედნიერ დღეს', 'კარგი საღამო', 'კარგი დღე', 'დაველოდებით თქვენს შეტყობინებას', 'ნებისმიერ დროს მომწერეთ', 'მშვიდობით'];
+                if (recentFarewells.some(fw => lastAssistant.text.includes(fw))) {
+                  console.log(`[Messenger Debounce] Suppressed loop goodbye for ${senderPsid}, sending paw stamp.`);
+                  await sendMessengerMessage(senderPsid, '🐾❤️');
+                  updateSession(senderPsid, 'assistant', '🐾❤️');
+                  continue;
+                }
+              }
+              const byeReply = 'მშვიდობით და ბედნიერ დღეს გისურვებთ! ❤️🐾 გაახარეთ თქვენი ოთხფეხა.';
+              await sendMessengerMessage(senderPsid, byeReply);
+              updateSession(senderPsid, 'assistant', byeReply);
+              continue;
+            }
+
+            // Fast-path: Pure emoji, laughter, reactions (🤣, 😂, 👍, ❤️, ჰაჰა)
+            const isPureReaction = /^[\p{Emoji}\s🤣😂😁❤️👍🙏😊🐾🐶]+$/u.test(userText) || ['ჰაჰა', 'ხახა', 'haha', 'hahaha', 'lol', 'xaxa'].includes(cleanText);
+            if (isPureReaction) {
+              const sessionHistory = session.history || [];
+              const lastAssistant = sessionHistory.slice().reverse().find(m => m.sender === 'assistant');
+              if (lastAssistant) {
+                console.log(`[Messenger Fast-Path] Handled reaction "${userText}" from ${senderPsid} without catalog pitch.`);
+                let reactionReply = '❤️🐾';
+                if (/^(?:🤣|😂|ჰაჰა|ხახა|haha|lol)/i.test(userText) || ['ჰაჰა', 'ხახა', 'haha', 'lol'].includes(cleanText)) {
+                  reactionReply = '😄🐾';
+                }
+                await sendMessengerMessage(senderPsid, reactionReply);
+                updateSession(senderPsid, 'assistant', reactionReply);
+                continue;
+              }
             }
 
             // Only show interactive catalog carousel if specifically asked
@@ -658,19 +741,25 @@ app.post('/webhook', async (req, res) => {
               continue;
             }
 
-            // Photo / Visual requests fast-path
-            const photoKeywords = ['ფოტო', 'სურათ', 'მაჩვენე', 'მაჩვენეთ'];
+            // Photo / Visual requests fast-path (including colloquial Georgian: ჩამიგდეთ, მაჩვენეთ, გამომიგზავნეთ)
+            const photoKeywords = ['ფოტო', 'სურათ', 'მაჩვენე', 'მაჩვენეთ', 'ჩამიგდ', 'გამომიგზავნ'];
             if (photoKeywords.some(kw => cleanText.includes(kw))) {
-              if (cleanText.includes('ღრუბ') || cleanText.includes('ფილტვ')) {
+              const histLast = (session.history || []).slice(-4).map(m => m.text).join(' ');
+              const mentionsLung = cleanText.includes('ღრუბ') || cleanText.includes('ფილტვ') || histLast.includes('ღრუბელი') || histLast.includes('ფილტვი');
+              const mentionsLiver = cleanText.includes('კუბ') || cleanText.includes('ღვიძლ') || histLast.includes('კუბები') || histLast.includes('ღვიძლი');
+              const mentionsPaws = cleanText.includes('თათ') || cleanText.includes('დრაკონ') || cleanText.includes('ქათამ') || histLast.includes('თათები') || histLast.includes('ქათმის');
+              const mentionsPowder = cleanText.includes('პუდრ') || cleanText.includes('ფხვნილ') || histLast.includes('პუდრა');
+
+              if (mentionsLung && !mentionsLiver && !mentionsPaws && !mentionsPowder) {
                 await sendMessengerImage(senderPsid, `${BASE_HOST}/images/ghrubeli_v3.jpg`);
                 await sendMessengerMessage(senderPsid, 'ესეც ჩვენი 100% ნატურალური საქონლის ფილტვი — „ღრუბელი“ (50გ) 🐾 ჰაეროვანი, დაბალკალორიული და იდეალური წვრთნისთვის.');
-              } else if (cleanText.includes('კუბ') || cleanText.includes('ღვიძლ')) {
+              } else if (mentionsLiver && !mentionsLung && !mentionsPaws && !mentionsPowder) {
                 await sendMessengerImage(senderPsid, `${BASE_HOST}/images/kubebi_v3.jpg`);
                 await sendMessengerMessage(senderPsid, 'ესეც ჩვენი 100% საქონლის ღვიძლის „სუპერ-კუბები“ (80გ) 🐾 ვიტამინებით სავსე, ძლიერი და მიმზიდველი არომატით.');
-              } else if (cleanText.includes('თათ') || cleanText.includes('დრაკონ') || cleanText.includes('ქათამ')) {
+              } else if (mentionsPaws && !mentionsLung && !mentionsLiver && !mentionsPowder) {
                 await sendMessengerImage(senderPsid, `${BASE_HOST}/images/tathebi_v3.jpg`);
                 await sendMessengerMessage(senderPsid, 'ესეც ჩვენი „დრაკონის თათები“ (100გ) — 100% ქათმის ფეხი 🐾 ბუნებრივი კოლაგენი სახსრებისა და კბილების გასაწმენდად.');
-              } else if (cleanText.includes('პუდრ') || cleanText.includes('ფხვნილ')) {
+              } else if (mentionsPowder && !mentionsLung && !mentionsLiver && !mentionsPaws) {
                 await sendMessengerImage(senderPsid, `${BASE_HOST}/images/pudra_v3.jpg`);
                 await sendMessengerMessage(senderPsid, 'ესეც „ჯადოსნური პუდრა“ (40გ) — 100% ხორცის ტოპინგი 🐾 მადისაღმძვრელი არომატი პრეტენზიული ძაღლებისთვის.');
               } else {

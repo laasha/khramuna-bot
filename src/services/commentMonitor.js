@@ -52,63 +52,110 @@ export async function handleCommentAction({ commentId, commenterName = '', comme
 }
 
 /**
- * Checks recent posts for unreplied comments created within the last 4 hours.
+ * Checks recent Facebook and Instagram posts for unreplied comments created within the last 4 hours.
  */
 export async function checkNewComments() {
   const token = process.env.FB_PAGE_ACCESS_TOKEN;
   if (!token) return;
 
+  const cutoffTime = Date.now() - 4 * 60 * 60 * 1000;
+
+  // 1. Check Facebook Page Posts (correct endpoint: /posts)
   try {
-    const url = `https://graph.facebook.com/v19.0/${PAGE_ID}/published_posts?fields=id,message,comments{id,message,from,created_time,comments{id,from}}&limit=5&access_token=${token}`;
+    const url = `https://graph.facebook.com/v19.0/${PAGE_ID}/posts?fields=id,message,comments{id,message,from,created_time,comments{id,from}}&limit=10&access_token=${token}`;
     const res = await fetch(url);
     const json = await res.json();
 
-    if (!json.data) return;
+    if (json.data && Array.isArray(json.data)) {
+      for (const post of json.data) {
+        const postText = post.message || '';
+        const comments = post.comments?.data || [];
+        for (const c of comments) {
+          if (!c.id) continue;
 
-    // Filter window: comments from the last 4 hours only (to avoid touching ancient posts)
-    const cutoffTime = Date.now() - 4 * 60 * 60 * 1000;
+          // Skip if already tracked
+          if (isCommentReplied(c.id)) continue;
 
-    for (const post of json.data) {
-      const postText = post.message || '';
-      const comments = post.comments?.data || [];
-      for (const c of comments) {
-        if (!c.id) continue;
+          // Skip comments made by Khramuna page
+          if (c.from && c.from.id === PAGE_ID) continue;
 
-        // Skip if already tracked
-        if (isCommentReplied(c.id)) continue;
+          // Skip comments created older than 4 hours
+          const commentTime = new Date(c.created_time).getTime();
+          if (commentTime < cutoffTime) {
+            markCommentReplied(c.id);
+            continue;
+          }
 
-        // Skip comments made by Khramuna page
-        if (c.from && c.from.id === PAGE_ID) continue;
+          // Check if Khramuna has already replied under this comment thread on Facebook
+          const subComments = c.comments?.data || [];
+          const alreadyHasPageReply = subComments.some((sc) => sc.from?.id === PAGE_ID);
+          if (alreadyHasPageReply) {
+            markCommentReplied(c.id);
+            continue;
+          }
 
-        // Skip comments created older than 4 hours
-        const commentTime = new Date(c.created_time).getTime();
-        if (commentTime < cutoffTime) {
-          markCommentReplied(c.id);
-          continue;
+          const rawName = c.from?.name || '';
+          console.log(`[Auto-Monitor] Found fresh Facebook comment from ${rawName || 'Customer'} (${c.id}): "${c.message || ''}"`);
+
+          // Trigger asynchronous processing with human delay
+          handleCommentAction({
+            commentId: c.id,
+            commenterName: rawName,
+            commentText: c.message || '',
+            postText,
+            isInstagram: false,
+          }).catch((err) => console.error('[Auto-Monitor] Error handling FB comment:', err));
         }
-
-        // Check if Khramuna has already replied under this comment thread on Facebook
-        const subComments = c.comments?.data || [];
-        const alreadyHasPageReply = subComments.some((sc) => sc.from?.id === PAGE_ID);
-        if (alreadyHasPageReply) {
-          markCommentReplied(c.id);
-          continue;
-        }
-
-        const rawName = c.from?.name || '';
-        console.log(`[Auto-Monitor] Found fresh comment from ${rawName || 'Customer'} (${c.id}): "${c.message || ''}"`);
-
-        // Trigger asynchronous processing with human delay
-        handleCommentAction({
-          commentId: c.id,
-          commenterName: rawName,
-          commentText: c.message || '',
-          postText,
-        }).catch((err) => console.error('[Auto-Monitor] Error handling comment:', err));
       }
     }
   } catch (err) {
-    // Polling error handled gracefully
+    console.error('[Auto-Monitor] Error polling Facebook posts:', err.message);
+  }
+
+  // 2. Check Linked Instagram Media Comments
+  try {
+    const igAccRes = await fetch(`https://graph.facebook.com/v19.0/${PAGE_ID}?fields=instagram_business_account&access_token=${token}`);
+    const igAccJson = await igAccRes.json();
+    const igId = igAccJson.instagram_business_account?.id;
+    if (igId) {
+      const igMediaUrl = `https://graph.facebook.com/v19.0/${igId}/media?fields=id,caption,comments{id,text,username,timestamp,from,replies{id,from}}&limit=8&access_token=${token}`;
+      const igRes = await fetch(igMediaUrl);
+      const igJson = await igRes.json();
+      if (igJson.data && Array.isArray(igJson.data)) {
+        for (const media of igJson.data) {
+          const postText = media.caption || '';
+          const comments = media.comments?.data || [];
+          for (const c of comments) {
+            if (!c.id) continue;
+            if (isCommentReplied(c.id)) continue;
+
+            const cTime = new Date(c.timestamp).getTime();
+            if (cTime < cutoffTime) {
+              markCommentReplied(c.id);
+              continue;
+            }
+
+            const subReplies = c.replies?.data || [];
+            const alreadyReplied = subReplies.some((sr) => sr.from?.id === igId || sr.username === 'khramuna');
+            if (alreadyReplied) {
+              markCommentReplied(c.id);
+              continue;
+            }
+
+            console.log(`[Auto-Monitor] Found fresh IG comment from @${c.username || 'User'} (${c.id}): "${c.text || ''}"`);
+            handleCommentAction({
+              commentId: c.id,
+              commenterName: c.username || '',
+              commentText: c.text || '',
+              postText,
+              isInstagram: true,
+            }).catch((err) => console.error('[Auto-Monitor] Error handling IG comment:', err));
+          }
+        }
+      }
+    }
+  } catch (igErr) {
+    console.error('[Auto-Monitor] Error polling Instagram media:', igErr.message);
   }
 }
 
