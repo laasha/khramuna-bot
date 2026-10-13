@@ -663,6 +663,36 @@ app.post('/webhook', async (req, res) => {
 
             // Fast-path: Common courtesies (instant, warm, human, zero API overhead)
             const cleanText = userText.toLowerCase().replace(/[.,!?;:()]/g, '').trim();
+
+            // Fast-path: Explicit human handoff request
+            const humanHandoffPhrases = ['ადამიანს დამაკავშირე', 'ადამიანი მინდა', 'ოპერატორი მინდა', 'ოპერატორს დამაკავშირე', 'ადამიანთან მინდა საუბარი', 'ადამიანს ველაპარაკები', 'მომწეროს ადამიანმა'];
+            if (humanHandoffPhrases.some(p => cleanText.includes(p))) {
+              pauseBotForUser(senderPsid);
+              const handoffMsg = 'გასაგებია! ❤️ ჩვენს გუნდს უკვე გადავეცი თქვენი შეტყობინება და მალევე პირადად მოგწერთ ჩვენი თანაგუნდელი.';
+              await sendMessengerMessage(senderPsid, handoffMsg);
+              updateSession(senderPsid, 'assistant', handoffMsg);
+              continue;
+            }
+
+            // Fast-path: Origin / "სადაურია?"
+            const originPhrases = ['სადაურია', 'სადაური', 'სად მზადდება', 'სად აკეთებთ', 'საიდანაა', 'ქართულია'];
+            if (originPhrases.includes(cleanText)) {
+              const originMsg = '100% საქართველოში ვამზადებთ! 🇬🇪 ჩვენი საამქრო გვაქვს თბილისში, სადაც ახალ ქართულ ხორცს დაბალ ტემპერატურაზე (<70°C) ნელა ვაშრობთ, ყოველგვარი მარილის, საღებავისა და ქიმიის გარეშე. რომელი ჯიშის ცუგასთვის გაინტერესებთ? 🐾';
+              await new Promise(r => setTimeout(r, 2800));
+              await sendMessengerMessage(senderPsid, originMsg);
+              updateSession(senderPsid, 'assistant', originMsg);
+              continue;
+            }
+
+            // Fast-path: Bot suspicion / "ბოტი ხარ?"
+            const botSuspectPhrases = ['ბოტი ხარ', 'რობოტი ხარ', 'ბოტია', 'რობოტია', 'ხელოვნური ინტელექტი ხარ', 'აი ხარ', 'ai ხარ', 'ავტომატური პასუხია', 'ავტომატური ხარ'];
+            if (botSuspectPhrases.some(p => cleanText.includes(p))) {
+              const botMsg = 'ხრამუნას ციფრული ასისტენტი ვარ 🙂 ჩვენი გუნდის მიერ ისე ვარ მომზადებული, რომ ცუგას კვებაზე, შემადგენლობასა და შეკვეთაზე ადამიანურად და სწრაფად დაგეხმაროთ. თუ გირჩევნიათ, რომ ჩვენმა თანაგუნდელმა პირადად მოგწეროთ, სიამოვნებით დავაკავშირებ! ❤️';
+              await new Promise(r => setTimeout(r, 3200));
+              await sendMessengerMessage(senderPsid, botMsg);
+              updateSession(senderPsid, 'assistant', botMsg);
+              continue;
+            }
             const thanksList = ['მადლობა', 'დიდი მადლობა', 'მადლობთ', 'გაიხარე', 'გაიხარეთ', 'მადლობა დიდი'];
             if (thanksList.includes(cleanText)) {
               // Anti-stutter guard: If assistant already sent a warm closing/farewell message right before this, suppress duplicate reply!
@@ -845,7 +875,7 @@ app.post('/webhook', async (req, res) => {
 
             // Simulate natural human typing pause
             // Simulate natural human typing pause (1.2s to 2.2s based on response length)
-            const typingDelay = Math.min(2200, Math.max(1200, ((aiResponse.replyText || '').length * 15)));
+            const typingDelay = Math.min(5200, Math.max(3000, ((aiResponse.replyText || '').length * 20) + Math.floor(Math.random() * 1200)));
             await new Promise((resolve) => setTimeout(resolve, typingDelay));
 
             console.log('[Messenger] Sending natural reply back to Facebook...');
