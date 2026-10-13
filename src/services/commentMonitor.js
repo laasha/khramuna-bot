@@ -16,11 +16,8 @@ export async function handleCommentAction({ commentId, commenterName = '', comme
     return;
   }
 
-  // Mark as replied immediately to prevent any concurrent race condition
-  markCommentReplied(commentId);
-
-  // 1. Natural Human Jitter / Delay (2 to 5 minutes: 120,000 - 300,000 ms)
-  // In Vercel serverless environment, cap at 5-8s to avoid lambda execution timeout.
+  // 1. Natural Human Jitter / Delay
+  // In Vercel serverless environment, cap at 500ms to avoid lambda execution timeout.
   const isVercel = process.env.VERCEL === '1';
   const delayMs = isVercel ? 500 : Math.floor(Math.random() * 60000) + 15000;
   
@@ -37,14 +34,32 @@ export async function handleCommentAction({ commentId, commenterName = '', comme
       recentReplies,
     });
 
-    console.log(`[Comment Service] Sending public authority reply to ${isInstagram ? 'Instagram' : 'Facebook'} comment ${commentId}: "${publicReply}"`);
-    await replyToComment(commentId, publicReply, isInstagram);
-    saveFeedReply(publicReply);
+    console.log(`[Comment Service] Sending public reply to ${isInstagram ? 'Instagram' : 'Facebook'} comment ${commentId}: "${publicReply}"`);
+    const publicSuccess = await replyToComment(commentId, publicReply, isInstagram);
 
-    // Only send private reply if customer explicitly inquired about price/ordering/contact
-    if (isDirectInquiry && privateReply) {
-      console.log(`[Comment Service] Sending private reply for direct inquiry under comment ${commentId}`);
-      await sendPrivateReply(commentId, privateReply);
+    if (publicSuccess) {
+      saveFeedReply(publicReply);
+      markCommentReplied(commentId);
+      console.log(`[Comment Service] Public reply successfully posted for comment ${commentId}`);
+
+      // If customer had a direct inquiry, send additional private reply
+      if (isDirectInquiry && privateReply) {
+        console.log(`[Comment Service] Sending private reply for direct inquiry under comment ${commentId}`);
+        await sendPrivateReply(commentId, privateReply);
+      }
+    } else {
+      console.warn(`[Comment Service] Public reply failed for comment ${commentId}. Checking private fallback...`);
+      // Fallback: If Facebook public reply failed (e.g. missing pages_manage_engagement scope),
+      // send a private reply via Messenger so the customer is never left unanswered!
+      if (!isInstagram) {
+        const fallbackText = privateReply || publicReply;
+        console.log(`[Comment Service] Sending private Messenger fallback for comment ${commentId}: "${fallbackText}"`);
+        const privateSent = await sendPrivateReply(commentId, fallbackText);
+        if (privateSent) {
+          markCommentReplied(commentId);
+          console.log(`[Comment Service] Private fallback reply delivered to commenter for ${commentId}`);
+        }
+      }
     }
   } catch (err) {
     console.error(`[Comment Service] Error processing comment ${commentId}:`, err.message);

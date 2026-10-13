@@ -134,6 +134,7 @@ export async function sendPrivateReply(commentId, text) {
       return false;
     }
     console.log(`[Facebook] Sent private reply for comment ${commentId}:`, data.message_id);
+    return true;
   } catch (err) {
     console.error('[Facebook] Error sending private reply:', err.message);
     return false;

@@ -860,9 +860,11 @@ app.post('/webhook', async (req, res) => {
           // Facebook Comments
           if (change.field === 'feed' && change.value) {
             const val = change.value;
-            if (val.item === 'comment' && val.verb === 'add' && val.from && val.from.id !== '928195650386088') {
+            const senderId = val.from?.id;
+            const isFromPage = senderId === '928195650386088' || val.sender_id === '928195650386088';
+            if (val.item === 'comment' && val.verb === 'add' && !isFromPage) {
               const commentId = val.comment_id;
-              const commenterName = val.from.name || '';
+              const commenterName = val.from?.name || '';
               const commentText = val.message || '';
               const postText = val.post?.message || val.post_title || '';
               console.log(`[Feed Webhook] Incoming Facebook comment from ${commenterName} (${commentId}): "${commentText}"`);
@@ -880,9 +882,10 @@ app.post('/webhook', async (req, res) => {
           // Instagram Comments
           if (change.field === 'comments' && change.value) {
             const val = change.value;
-            if (val.id && val.from && val.from.username !== 'khramuna_snacks') {
+            const isFromPage = val.from?.username === 'khramuna_snacks' || val.from?.id === '17841427052704939';
+            if (val.id && !isFromPage) {
               const commentId = val.id;
-              const commenterName = val.from.username || '';
+              const commenterName = val.from?.username || '';
               const commentText = val.text || '';
               console.log(`[Instagram Webhook] Incoming IG comment from @${commenterName} (${commentId}): "${commentText}"`);
 
