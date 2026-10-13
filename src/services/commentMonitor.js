@@ -73,7 +73,7 @@ export async function checkNewComments() {
   const token = process.env.FB_PAGE_ACCESS_TOKEN;
   if (!token) return;
 
-  const cutoffTime = Date.now() - 4 * 60 * 60 * 1000;
+  const cutoffTime = Date.now() - 24 * 60 * 60 * 1000;
 
   // 1. Check Facebook Page Posts (correct endpoint: /posts)
   try {
