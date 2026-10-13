@@ -81,7 +81,7 @@ app.get('/health', (req, res) => {
 });
 
 // Scheduled Cron Endpoint for Vercel Cron (checks missed comments every 10 mins)
-app.get('/api/cron-comments', async (req, res) => {
+app.get(['/api/cron-comments', '/cron-comments'], async (req, res) => {
   try {
     console.log('[Cron] Running scheduled checkNewComments sweep...');
     await checkNewComments();
