@@ -714,58 +714,7 @@ app.post('/webhook', async (req, res) => {
               continue;
             }
 
-            // Fast-path: Origin / "სადაურია?"
-            const originPhrases = ['სადაურია', 'სადაური', 'სად მზადდება', 'სად აკეთებთ', 'საიდანაა', 'ქართულია'];
-            if (originPhrases.includes(cleanText)) {
-              const originMsg = '100% საქართველოში ვამზადებთ! 🇬🇪 ჩვენი საამქრო გვაქვს თბილისში, სადაც ახალ ქართულ ხორცს დაბალ ტემპერატურაზე (<70°C) ნელა ვაშრობთ, ყოველგვარი მარილის, საღებავისა და ქიმიის გარეშე. რომელი ჯიშის ცუგასთვის გაინტერესებთ? 🐾';
-              await new Promise(r => setTimeout(r, 2800));
-              await sendMessengerMessage(senderPsid, originMsg);
-              updateSession(senderPsid, 'assistant', originMsg);
-              continue;
-            }
-
-            // Fast-path: Bot suspicion / "ბოტი ხარ?"
-            const botSuspectPhrases = ['ბოტი ხარ', 'რობოტი ხარ', 'ბოტია', 'რობოტია', 'ხელოვნური ინტელექტი ხარ', 'აი ხარ', 'ai ხარ', 'ავტომატური პასუხია', 'ავტომატური ხარ'];
-            if (botSuspectPhrases.some(p => cleanText.includes(p))) {
-              const botMsg = 'ხრამუნას ციფრული ასისტენტი ვარ 🙂 ჩვენი გუნდის მიერ ისე ვარ მომზადებული, რომ ცუგას კვებაზე, შემადგენლობასა და შეკვეთაზე ადამიანურად და სწრაფად დაგეხმაროთ. თუ გირჩევნიათ, რომ ჩვენმა თანაგუნდელმა პირადად მოგწეროთ, სიამოვნებით დავაკავშირებ! ❤️';
-              await new Promise(r => setTimeout(r, 3200));
-              await sendMessengerMessage(senderPsid, botMsg);
-              updateSession(senderPsid, 'assistant', botMsg);
-              continue;
-            }
-            const thanksList = ['მადლობა', 'დიდი მადლობა', 'მადლობთ', 'გაიხარე', 'გაიხარეთ', 'მადლობა დიდი'];
-            if (thanksList.includes(cleanText)) {
-              // Anti-stutter guard: If assistant already sent a warm closing/farewell message right before this, suppress duplicate reply!
-              const sessionHistory = session.history || [];
-              const lastAssistant = sessionHistory.slice().reverse().find(m => m.sender === 'assistant');
-              if (lastAssistant) {
-                const recentFarewells = ['გაახარეთ თქვენი ცუგა', 'კარგი საღამო', 'კარგი დღე', 'დაველოდებით თქვენს შეტყობინებას', 'ნებისმიერ დროს მომწერეთ', 'მშვიდობით'];
-                if (recentFarewells.some(fw => lastAssistant.text.includes(fw))) {
-                  console.log(`[Messenger Debounce] Suppressed duplicate consecutive thank-you closing for ${senderPsid}`);
-                  continue;
-                }
-              }
-
-              // Check if order was already confirmed/placed
-              const historyText = (session.history || []).slice(-6).map(m => m.text).join(' ');
-              const orderAlreadyPlaced = historyText.includes('გაფორმებულია') ||
-                                         historyText.includes('დადასტურებულია') ||
-                                         historyText.includes('კურიერს გავატანთ') ||
-                                         historyText.includes('შეკვეთის ჩეკი') ||
-                                         historyText.includes('ნდობისთვის');
-              if (orderAlreadyPlaced) {
-                const thankReply = 'არაფრის, გაახარეთ თქვენი ცუგა! ❤️ თუ რამე დაგჭირდეთ, ნებისმიერ დროს მომწერეთ.';
-                await sendMessengerMessage(senderPsid, thankReply);
-                updateSession(senderPsid, 'assistant', thankReply);
-                continue;
-              }
-              // If customer is still browsing/inquiring (e.g. asked price/grams/delivery) and says thanks:
-              // Don't kill the sale! Friendly nudge to close!
-              const thankReply = 'გაიხარეთ! ❤️🐾 თუ გნებავთ, შეკვეთას სიამოვნებით გაგიფორმებთ და დღესვე/ხვალვე მოგართმევთ კურიერით — ხომ არ გავამზადოთ თქვენთვის? ✨';
-              await sendMessengerMessage(senderPsid, thankReply);
-              updateSession(senderPsid, 'assistant', thankReply);
-              continue;
-            }
+// Let living AI handle origin, bot questions and thanks contextually without canned texts
 
             // Fast-path: Goodbyes & Farewell Ping-Pong Guard
             const goodbyeList = ['კარგად', 'კარგად იყავით', 'კარგად ბრძანდებოდეთ', 'ნახვამდის', 'დროებით', 'წარმატებები'];
@@ -812,9 +761,10 @@ app.post('/webhook', async (req, res) => {
               continue;
             }
 
-            // Photo / Visual requests fast-path (including colloquial Georgian: ჩამიგდეთ, მაჩვენეთ, გამომიგზავნეთ)
-            const photoKeywords = ['ფოტო', 'სურათ', 'მაჩვენე', 'მაჩვენეთ', 'ჩამიგდ', 'გამომიგზავნ'];
-            if (photoKeywords.some(kw => cleanText.includes(kw))) {
+            // Photo / Visual requests fast-path (Only when customer specifically requests a photo/image!)
+            const isExplicitPhotoRequest = (cleanText.includes('ფოტო') || cleanText.includes('სურათ') || cleanText.includes('როგორ გამოიყურება') || cleanText.includes('მაჩვენეთ როგორ')) &&
+              !cleanText.includes('შეკვეთ') && !cleanText.includes('მინდა შეკვეთა') && !cleanText.includes('ყიდვა');
+            if (isExplicitPhotoRequest) {
               const histLast = (session.history || []).slice(-4).map(m => m.text).join(' ');
               const mentionsLung = cleanText.includes('ღრუბ') || cleanText.includes('ფილტვ') || histLast.includes('ღრუბელი') || histLast.includes('ფილტვი');
               const mentionsLiver = cleanText.includes('კუბ') || cleanText.includes('ღვიძლ') || histLast.includes('კუბები') || histLast.includes('ღვიძლი');
