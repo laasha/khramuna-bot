@@ -4,6 +4,18 @@ const userTextLocks = new Map();
 // Smart Debounce Queue for rapid consecutive user messages (e.g. 2-3 short texts sent within 1.8s)
 const userMessageQueues = new Map();
 
+function normalizeGeorgianPhone(rawPhone) {
+  if (!rawPhone) return '';
+  let clean = String(rawPhone).replace(/[^\d]/g, '');
+  if (clean.startsWith('995') && clean.length >= 12) {
+    clean = clean.slice(3);
+  }
+  if (clean.startsWith('0')) {
+    clean = clean.replace(/^0+/, '');
+  }
+  return clean;
+}
+
 function enqueueUserMessage(senderPsid, text) {
   return new Promise((resolve) => {
     let queue = userMessageQueues.get(senderPsid);
@@ -329,13 +341,14 @@ app.post('/api/test-chat', async (req, res) => {
 
   let createdOrder = null;
   if (aiRes.isOrderReady && aiRes.order) {
-    const cleanPhone = (aiRes.order.phone || '').replace(/[^\d]/g, '');
+    const cleanPhone = normalizeGeorgianPhone(aiRes.order.phone);
     const cleanAddress = (aiRes.order.address || '').trim();
 
-    if (cleanPhone.length >= 9 && cleanAddress.length >= 5) {
+    if (cleanPhone.length === 9 && cleanAddress.length >= 5) {
       createdOrder = saveOrder({
         userId,
         ...aiRes.order,
+        phone: cleanPhone,
       });
       // Sync with Google Sheets & Telegram
       await saveOrderToGoogleSheet(createdOrder);
@@ -671,6 +684,33 @@ app.post('/webhook', async (req, res) => {
               const handoffMsg = 'გასაგებია! ❤️ ჩვენს გუნდს უკვე გადავეცი თქვენი შეტყობინება და მალევე პირადად მოგწერთ ჩვენი თანაგუნდელი.';
               await sendMessengerMessage(senderPsid, handoffMsg);
               updateSession(senderPsid, 'assistant', handoffMsg);
+              try {
+                await notifyTelegramAlert(
+                  '🚨 *ოპერატორის ჩართვის მოთხოვნა (Human Handoff)*',
+                  `👤 *მომხმარებელი (ID):* \`${senderPsid}\`\n💬 *შეტყობინება:* "${userText}"\n🔗 [გახსენით Meta Business Suite Inbox](https://business.facebook.com/latest/inbox/)`
+                );
+              } catch (alertErr) {
+                console.error('[Telegram Handoff Alert Error]:', alertErr.message);
+              }
+              continue;
+            }
+
+            // Fast-path: Wholesale / B2B partnership inquiry
+            const b2bPhrases = ['საბითუმო', 'საბითუმოდ', 'დისტრიბუცია', 'ზოომაღაზია', 'ზოო მაღაზია', 'პარტნიორობა', 'თანამშრომლობა', 'ვეტკლინიკა', 'ვეტაფთიაქი', 'შემსყიდველი', 'კორპორატიული'];
+            if (b2bPhrases.some(p => cleanText.includes(p))) {
+              const b2bReply = 'მოგესალმებით! ❤️ დიდი მადლობა დაინტერესებისთვის. დიახ, სიამოვნებით ვთანამშრომლობთ ზოომაღაზიებთან, ვეტკლინიკებსა და პარტნიორებთან საბითუმო ფასებითა და მოქნილი პირობებით.\n\nჩვენს ხელმძღვანელს უკვე გადავეცი თქვენი მოთხოვნა და მალევე პირადად დაგიკავშირდებათ აქ, ან თუ გნებავთ, დაგვიტოვეთ თქვენი საკონტაქტო ნომერი 📲🐾';
+              pauseBotForUser(senderPsid);
+              await new Promise(r => setTimeout(r, 2600));
+              await sendMessengerMessage(senderPsid, b2bReply);
+              updateSession(senderPsid, 'assistant', b2bReply);
+              try {
+                await notifyTelegramAlert(
+                  '🤝 *ახალი B2B / საბითუმო მოთხოვნა!*',
+                  `👤 *მომხმარებელი (ID):* \`${senderPsid}\`\n💬 *შეტყობინება:* "${userText}"\n🔗 [გახსენით Meta Business Suite Inbox](https://business.facebook.com/latest/inbox/)`
+                );
+              } catch (alertErr) {
+                console.error('[Telegram B2B Alert Error]:', alertErr.message);
+              }
               continue;
             }
 
@@ -822,17 +862,18 @@ app.post('/webhook', async (req, res) => {
               console.log(`[Messenger] Escalation triggered for user ${senderPsid}`);
               await notifyTelegramAlert(
                 '🚨 *პრიორიტეტული ყურადღება / ესკალაცია!*',
-                `👤 კლიენტი (ID): \`${senderPsid}\`\n💬 შეტყობინება: "${userText}"\n🤖 ბოტის პასუხი: "${aiResponse.replyText}"`
+                `👤 კლიენტი (ID): \`${senderPsid}\`\n💬 შეტყობინება: "${userText}"\n🤖 ბოტის პასუხი: "${aiResponse.replyText}"\n🔗 [გახსენით Meta Business Suite Inbox](https://business.facebook.com/latest/inbox/)`
               );
             }
             if (aiResponse.isOrderReady && aiResponse.order) {
               const cleanProduct = (aiResponse.order.product || '').trim();
               const orderPrice = Number(aiResponse.order.price) || 0;
-              const cleanPhone = (aiResponse.order.phone || '').replace(/[^\d]/g, '');
+              const cleanPhone = normalizeGeorgianPhone(aiResponse.order.phone);
               const cleanAddress = (aiResponse.order.address || '').trim();
 
               // Strict 4-point guard: Product, Price, Phone, Address must all be verified!
-              const isValidPhone = cleanPhone.length === 9 || (cleanPhone.startsWith('995') && cleanPhone.length === 12);
+              // Georgian mobile numbers are exactly 9 digits (typically starting with 5)
+              const isValidPhone = cleanPhone.length === 9;
               const isValidProduct = cleanProduct.length >= 3 && !cleanProduct.includes('უცნობი') && orderPrice > 0;
               const isValidAddress = cleanAddress.length >= 5;
 
@@ -840,6 +881,7 @@ app.post('/webhook', async (req, res) => {
                 const order = saveOrder({
                   userId: senderPsid,
                   ...aiResponse.order,
+                  phone: cleanPhone,
                 });
                 updateCustomerProfile(senderPsid, {
                   phone: cleanPhone,
