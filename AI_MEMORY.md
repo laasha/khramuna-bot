@@ -102,3 +102,5 @@
 
 - [2026-10-13] Meta Graph API Comment Permissions: Meta Error #200 on POST /{comment_id}/comments strictly requires pages_manage_engagement scope; GET /{post_id}/comments requires pages_read_user_content (Error #10). Until scopes are added in Graph API Explorer, commentMonitor automatically falls back to sendPrivateReply (via pages_messaging) so customer comments are answered via Messenger immediately without drops.
 - [2026-10-14] Notifications & Phone Normalization: 1) Georgian mobile numbers frequently arrive with leading 0 (0599...) or +995; stripping leading 0 and 995 in both AI system prompt instructions and backend validation ensures zero false order rejections, 2) Human handoff and B2B wholesale keywords trigger instant Telegram priority alerts with deep links to Meta Business Suite Inbox while pausing bot to prevent bot interruptions.
+
+- [2026-10-14] Meta Permanent Token Architecture: Generated Never-Expiring Page Access Token (expires_at: 0) for Khramuna (928195650386088) using Meta App Secret fb_exchange_token flow. Updated .env and Vercel Production. Bot is permanently active.
