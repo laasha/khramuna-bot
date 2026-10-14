@@ -1,9 +1,10 @@
 import stock from '../config/stock.json' with { type: 'json' };
 import catalog from '../config/catalog.json' with { type: 'json' };
 
-const GEMINI_TEXT_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent';
-const GEMINI_AUDIO_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent';
-const GEMINI_BACKUP_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
+const GEMINI_TEXT_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+const GEMINI_AUDIO_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
+const GEMINI_BACKUP_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent';
+const GEMINI_FALLBACK_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
 
 /**
  * System instruction defining the Khramuna Founder/Consultant persona and natural conversation.
@@ -463,7 +464,15 @@ function safeParseJson(text) {
 }
 
 async function callGemini(apiKey, contents, attempt = 1, isAudio = false, contextOptions = {}) {
-  let targetUrl = isAudio ? GEMINI_AUDIO_URL : (attempt === 1 ? GEMINI_TEXT_URL : GEMINI_BACKUP_URL);
+  let targetUrl = GEMINI_TEXT_URL;
+  if (isAudio) {
+    targetUrl = GEMINI_AUDIO_URL;
+  } else if (attempt === 2) {
+    targetUrl = GEMINI_BACKUP_URL;
+  } else if (attempt >= 3) {
+    targetUrl = GEMINI_FALLBACK_URL;
+  }
+
   const res = await fetch(`${targetUrl}?key=${apiKey}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -481,13 +490,13 @@ async function callGemini(apiKey, contents, attempt = 1, isAudio = false, contex
 
   if (!res.ok) {
     const errText = await res.text();
-    console.error(`[AI] Gemini API HTTP error (attempt ${attempt}):`, res.status, errText);
+    console.error(`[AI] Gemini API HTTP error (attempt ${attempt} on ${targetUrl}):`, res.status, errText);
 
-    // If rate-limited or temporarily unavailable, retry once after 1.5 seconds with backup model
-    if ((res.status === 429 || res.status === 503 || res.status === 404) && attempt === 1) {
-      console.log('[AI] Retrying with backup Gemini model after 1500ms...');
-      await new Promise((resolve) => setTimeout(resolve, 1500));
-      return callGemini(apiKey, contents, 2, isAudio, contextOptions);
+    // If rate-limited or 503/404, retry up to 3 attempts with fallbacks
+    if ((res.status === 429 || res.status === 503 || res.status === 404) && attempt < 3) {
+      console.log(`[AI] Retrying with model attempt ${attempt + 1} after 800ms...`);
+      await new Promise((resolve) => setTimeout(resolve, 800));
+      return callGemini(apiKey, contents, attempt + 1, isAudio, contextOptions);
     }
 
     throw new Error(`Gemini error: ${res.status}`);
@@ -646,9 +655,16 @@ export async function generateBotResponse(input, sessionHistory = [], contextOpt
       };
     }
 
+    if (cleanMsg.includes('მსუქან') || cleanMsg.includes('წონა') || cleanMsg.includes('დიეტა') || cleanMsg.includes('გასუქდ')) {
+      return {
+        replyText: 'ცუგას წონის კონტროლისთვის ჩვენი სასუსნავებიდან საუკეთესოა „ღრუბელი“ (საქონლის ფილტვი, 15₾) — ის სრულიად ჰაეროვანია, შეიცავს მხოლოდ ~2.5% ცხიმს და არის დაბალკალორიული, რომელიც წონაში არ მოამატებინებს 🐾 გავუმზადოთ თქვენს ცუგას?',
+        isOrderReady: false,
+      };
+    }
+
     if (hasHistory) {
       return {
-        replyText: 'რა თქმა უნდა! 🐾 რომელიმე კონკრეტული სასუსნავი ხომ არ შევარჩიოთ თქვენი ცუგას ჯიშისა და ასაკის მიხედვით? ❤️',
+        replyText: 'დიდი მადლობა! ❤️ დეტალებს სიამოვნებით გავეცანით. ჩვენი 100% ნატურალური სასუსნავებიდან რომელი გაინტერესებთ თქვენი ოთხფეხასთვის, რომ გავამზადოთ? 🐾',
         isOrderReady: false,
       };
     }
