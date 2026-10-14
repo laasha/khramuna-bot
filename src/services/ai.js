@@ -1,9 +1,9 @@
 import stock from '../config/stock.json' with { type: 'json' };
 import catalog from '../config/catalog.json' with { type: 'json' };
 
-const GEMINI_TEXT_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
-const GEMINI_AUDIO_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
-const GEMINI_BACKUP_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent';
+const GEMINI_TEXT_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent';
+const GEMINI_AUDIO_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-3.7-flash:generateContent';
+const GEMINI_BACKUP_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-flash-latest:generateContent';
 
 /**
  * System instruction defining the Khramuna Founder/Consultant persona and natural conversation.
@@ -612,7 +612,7 @@ export async function generateBotResponse(input, sessionHistory = [], contextOpt
       };
     }
 
-    const hasHistory = Array.isArray(history) && history.length > 0;
+    const hasHistory = Array.isArray(sessionHistory) && sessionHistory.length > 0;
 
     // Smart contextual fallbacks (no static robot repetition)
     if (cleanMsg.includes('სადაურ') || cleanMsg.includes('სად მზადდ') || cleanMsg.includes('საიდანაა') || cleanMsg.includes('ქართულ')) {
