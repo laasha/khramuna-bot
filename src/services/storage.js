@@ -1,3 +1,5 @@
+import { SEED_ORDERS } from '../data/seedOrders.js';
+import { SEED_PROFILES } from '../data/seedProfiles.js';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -117,7 +119,9 @@ export function saveOrder(orderData) {
  * Retrieves all orders.
  */
 export function getOrders() {
-  return readJsonFile(ORDERS_FILE, []);
+  const list = readJsonFile(ORDERS_FILE, []);
+  if (Array.isArray(list) && list.length > 0) return list;
+  return SEED_ORDERS || [];
 }
 
 // Initial sync on startup
@@ -293,7 +297,9 @@ const PROFILES_FILE = path.join(DATA_DIR, 'profiles.json');
 export function getCustomerProfile(userId) {
   if (!userId) return null;
   const profiles = readJsonFile(PROFILES_FILE, {});
-  return profiles[userId] || null;
+  if (profiles && profiles[userId]) return profiles[userId];
+  if (SEED_PROFILES && SEED_PROFILES[userId]) return SEED_PROFILES[userId];
+  return null;
 }
 
 /**

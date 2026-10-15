@@ -1,3 +1,5 @@
+import { SEED_ORDERS } from '../data/seedOrders.js';
+import { SEED_PROFILES } from '../data/seedProfiles.js';
 import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -29,20 +31,10 @@ function getProfilesMap() {
   if (fs.existsSync(PROFILES_FILE)) {
     try {
       const d = JSON.parse(fs.readFileSync(PROFILES_FILE, 'utf8'));
-      if (Object.keys(d).length > 0) return d;
+      if (d && Object.keys(d).length > 0) return d;
     } catch(e) {}
   }
-  if (fs.existsSync(SEED_PROFILES_FILE)) {
-    try {
-      const d = JSON.parse(fs.readFileSync(SEED_PROFILES_FILE, 'utf8'));
-      try {
-        if (!fs.existsSync(path.dirname(PROFILES_FILE))) fs.mkdirSync(path.dirname(PROFILES_FILE), { recursive: true });
-        fs.writeFileSync(PROFILES_FILE, JSON.stringify(d, null, 2), 'utf8');
-      } catch(e) {}
-      return d;
-    } catch(e) {}
-  }
-  return {};
+  return SEED_PROFILES || {};
 }
 
 const ADMIN_PIN = process.env.ADMIN_DASHBOARD_PIN || process.env.ADMIN_PIN || 'khramuna2026';
