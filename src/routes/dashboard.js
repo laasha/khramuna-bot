@@ -357,6 +357,36 @@ router.post('/comments/:commentId/reply', async (req, res) => {
   }
 });
 
+router.post('/comments/:commentId/hide', async (req, res) => {
+  const { commentId } = req.params;
+  const token = process.env.FB_PAGE_ACCESS_TOKEN;
+  if (!token) return res.status(500).json({ error: 'No token' });
+
+  try {
+    const url = `https://graph.facebook.com/v19.0/${commentId}?is_hidden=true&access_token=${token}`;
+    const r = await fetch(url, { method: 'POST' });
+    const d = await r.json();
+    return res.json({ success: d.success || false, data: d });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+router.delete('/comments/:commentId', async (req, res) => {
+  const { commentId } = req.params;
+  const token = process.env.FB_PAGE_ACCESS_TOKEN;
+  if (!token) return res.status(500).json({ error: 'No token' });
+
+  try {
+    const url = `https://graph.facebook.com/v19.0/${commentId}?access_token=${token}`;
+    const r = await fetch(url, { method: 'DELETE' });
+    const d = await r.json();
+    return res.json({ success: d.success || false, data: d });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // 8. Pet CRM Profiles
 router.get('/profiles', (req, res) => {
   try {
