@@ -115,6 +115,20 @@ router.post('/orders/:id/status', (req, res) => {
 });
 
 // 4. Live Messenger Chats
+router.get('/test-hydrate/:userId', async (req, res) => {
+  const { userId } = req.params;
+  const token = process.env.FB_PAGE_ACCESS_TOKEN;
+  const pageId = process.env.FB_PAGE_ID || '928195650386088';
+  const url = `https://graph.facebook.com/v20.0/${pageId}/conversations?user_id=${userId}&fields=id,messages.limit(15){message,from,created_time}&access_token=${token}`;
+  try {
+    const r = await fetch(url);
+    const json = await r.json();
+    res.json({ url, status: r.status, json });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 router.get('/chats', async (req, res) => {
   const token = process.env.FB_PAGE_ACCESS_TOKEN;
   if (!token) return res.status(500).json({ error: 'No FB_PAGE_ACCESS_TOKEN configured' });
