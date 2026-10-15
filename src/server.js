@@ -478,7 +478,27 @@ app.post('/webhook', async (req, res) => {
           if (payload) {
             console.log(`[Messenger Funnel] User ${senderPsid} clicked payload: ${payload}`);
 
-            if (payload === 'SHOW_CATALOG') {
+            if (payload === 'GET_STARTED') {
+            const welcome = 'გამარჯობა! 🐾 კეთილი იყოს თქვენი მობრძანება „ხრამუნაში“ — ჩვენ ვამზადებთ 100% ნატურალურ, ქართულ, გამომშრალ სასუსნავებს ბეწვიანი მეგობრებისთვის ❤️\n\nგაეცანით ჩვენს ასორტიმენტს ან მოგვწერეთ, რა ჯიშის და ასაკის ცუგა გყავთ:';
+            await sendMessengerMessage(senderPsid, welcome);
+            await sendProductCatalog(senderPsid);
+            updateSession(senderPsid, 'assistant', welcome);
+            continue;
+          }
+
+          if (payload === 'HUMAN_HANDOFF') {
+            pauseBotForUser(senderPsid, 120);
+            const handoffMsg = 'გასაგებია! ❤️ ჩვენს გუნდს უკვე გადავეცი თქვენი შეტყობინება და მალევე პირადად მოგწერთ ჩვენი თანაგუნდელი.';
+            await sendMessengerMessage(senderPsid, handoffMsg);
+            updateSession(senderPsid, 'assistant', handoffMsg);
+            await notifyTelegramAlert(
+              '🚨 *ოპერატორის ჩართვის მოთხოვნა (Persistent Menu)*',
+              `👤 *მომხმარებელი (ID):* \`${senderPsid}\`\n🔗 [გახსენით Meta Business Suite Inbox](https://business.facebook.com/latest/inbox/)`
+            ).catch(() => {});
+            continue;
+          }
+
+          if (payload === 'SHOW_CATALOG') {
               await sendMessengerMessage(senderPsid, 'გთავაზობთ ჩვენს 100% ნატურალურ ასორტიმენტს: 🐾');
               await sendProductCatalog(senderPsid);
               continue;

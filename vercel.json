@@ -10,5 +10,11 @@
       "source": "/(.*)",
       "destination": "/api/index.js"
     }
+  ],
+  "crons": [
+    {
+      "path": "/api/cron-comments",
+      "schedule": "*/10 * * * *"
+    }
   ]
 }
