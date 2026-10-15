@@ -512,7 +512,12 @@ app.post('/webhook', async (req, res) => {
                 const session = await getOrHydrateSession(senderPsid);
                 updateSession(senderPsid, 'user', `ავირჩიე შეკვეთა: ${product.name}`);
 
-                const confirmText = `შესანიშნავი არჩევანია! 🐾\nთქვენი არჩევანი: ${product.name} — ${product.price}₾.\n\nგთხოვთ მომწეროთ მიტანის მისამართი და ტელეფონის ნომერი, კურიერს გავატანთ და ხვალვე თქვენთან იქნება 📍📞`;
+                let confirmText = '';
+                if (productKey === 'full_pack') {
+                  confirmText = `შესანიშნავი არჩევანია! 🎁\nთქვენი არჩევანი: Full Pack (ოთხივე პროდუქტი) — 49.50₾ + უფასო მიტანა თბილისში!\n\nგთხოვთ მომწეროთ მიტანის მისამართი და ტელეფონის ნომერი, შეკვეთას სიყვარულით გავამზადებთ 📍📞`;
+                } else {
+                  confirmText = `შესანიშნავი არჩევანია! 🐾\nთქვენი არჩევანი: ${product.name} — ${product.price}₾.\n(თბილისში მიტანა 5₾, ხოლო 2 შეკვრაზე ან Full Pack-ზე მიტანა სრულიად უფასოა 🎁).\n\nგთხოვთ მომწეროთ მიტანის მისამართი და ტელეფონის ნომერი 📍📞`;
+                }
                 await sendMessengerMessage(senderPsid, confirmText);
                 updateSession(senderPsid, 'assistant', confirmText);
                 continue;
