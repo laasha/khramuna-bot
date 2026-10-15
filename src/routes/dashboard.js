@@ -23,6 +23,27 @@ const STOCK_FILE = path.resolve(__dirname, '../config/stock.json');
 const PROFILES_FILE = process.env.VERCEL
   ? '/tmp/khramuna-data/profiles.json'
   : path.resolve(__dirname, '../../data/profiles.json');
+const SEED_PROFILES_FILE = path.resolve(__dirname, '../../data/profiles.json');
+
+function getProfilesMap() {
+  if (fs.existsSync(PROFILES_FILE)) {
+    try {
+      const d = JSON.parse(fs.readFileSync(PROFILES_FILE, 'utf8'));
+      if (Object.keys(d).length > 0) return d;
+    } catch(e) {}
+  }
+  if (fs.existsSync(SEED_PROFILES_FILE)) {
+    try {
+      const d = JSON.parse(fs.readFileSync(SEED_PROFILES_FILE, 'utf8'));
+      try {
+        if (!fs.existsSync(path.dirname(PROFILES_FILE))) fs.mkdirSync(path.dirname(PROFILES_FILE), { recursive: true });
+        fs.writeFileSync(PROFILES_FILE, JSON.stringify(d, null, 2), 'utf8');
+      } catch(e) {}
+      return d;
+    } catch(e) {}
+  }
+  return {};
+}
 
 const ADMIN_PIN = process.env.ADMIN_DASHBOARD_PIN || process.env.ADMIN_PIN || 'khramuna2026';
 
@@ -58,13 +79,8 @@ router.get('/stats', async (req, res) => {
     const paidOrders = orders.filter(o => o.status === 'CONFIRMED_PAID' || o.status === 'PAID');
     const totalRevenue = orders.reduce((sum, o) => sum + (Number(o.price) || 0), 0);
 
-    let profilesCount = 0;
-    try {
-      if (fs.existsSync(PROFILES_FILE)) {
-        const raw = JSON.parse(fs.readFileSync(PROFILES_FILE, 'utf8'));
-        profilesCount = Object.keys(raw).length;
-      }
-    } catch (e) {}
+    const profilesMap = getProfilesMap();
+    const profilesCount = Object.keys(profilesMap).length;
 
     let stockData = {};
     try {
@@ -312,13 +328,11 @@ router.post('/comments/:commentId/reply', async (req, res) => {
 // 8. Pet CRM Profiles
 router.get('/profiles', (req, res) => {
   try {
-    let profiles = {};
-    if (fs.existsSync(PROFILES_FILE)) {
-      profiles = JSON.parse(fs.readFileSync(PROFILES_FILE, 'utf8'));
-    }
+    const profiles = getProfilesMap();
     const profileList = Object.values(profiles).map(p => ({
       userId: p.userId,
-      petName: p.petName || 'უცნობი',
+      customerName: p.customerName || 'მომხმარებელი',
+      petName: p.petName || 'საყვარელი ცუგა',
       petType: p.petType || 'ძაღლი',
       petBreed: p.petBreed || 'უცნობი',
       allergies: p.allergies || 'არ არის დაფიქსირებული',

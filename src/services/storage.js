@@ -15,12 +15,39 @@ if (!fs.existsSync(DATA_DIR)) {
 
 function readJsonFile(filePath, defaultValue) {
   try {
+    const baseName = path.basename(filePath);
+    const seedFile = path.resolve(__dirname, '../../data', baseName);
+
     if (!fs.existsSync(filePath)) {
+      if (fs.existsSync(seedFile)) {
+        try {
+          const seedContent = fs.readFileSync(seedFile, 'utf8');
+          fs.writeFileSync(filePath, seedContent, 'utf8');
+          return JSON.parse(seedContent);
+        } catch (e) {}
+      }
       fs.writeFileSync(filePath, JSON.stringify(defaultValue, null, 2), 'utf8');
       return defaultValue;
     }
+
     const raw = fs.readFileSync(filePath, 'utf8');
-    return JSON.parse(raw);
+    const parsed = JSON.parse(raw);
+
+    // If current file in /tmp is empty, fallback to seeded data
+    if ((Array.isArray(parsed) && parsed.length === 0) || (typeof parsed === 'object' && parsed !== null && Object.keys(parsed).length === 0)) {
+      if (fs.existsSync(seedFile)) {
+        try {
+          const seedRaw = fs.readFileSync(seedFile, 'utf8');
+          const seedParsed = JSON.parse(seedRaw);
+          if ((Array.isArray(seedParsed) && seedParsed.length > 0) || (typeof seedParsed === 'object' && Object.keys(seedParsed).length > 0)) {
+            fs.writeFileSync(filePath, seedRaw, 'utf8');
+            return seedParsed;
+          }
+        } catch (e) {}
+      }
+    }
+
+    return parsed;
   } catch (error) {
     console.error(`Error reading ${filePath}:`, error.message);
     return defaultValue;

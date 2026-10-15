@@ -502,7 +502,8 @@
         await Promise.all([
           loadStats(),
           loadOrders(),
-          loadChatsSummary()
+          loadChatsSummary(),
+          loadProfiles()
         ]);
       } catch (e) {
         console.error('Data load error:', e);
@@ -807,16 +808,23 @@
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">პროფილები ჯერ არ არის</td></tr>';
         return;
       }
-      tbody.innerHTML = profiles.map(p => `
+      tbody.innerHTML = profiles.map(p => {
+        const isAllergic = (p.allergies || '').includes('ალერგი') || (p.allergies || '').includes('ქათამ');
+        const allergyColor = isAllergic ? '#f87171' : 'var(--emerald)';
+        return `
         <tr>
-          <td><strong style="color:var(--amber); font-size:15px;">🐶 ${escapeHtml(p.petName)}</strong></td>
+          <td>
+            <strong style="color:var(--amber); font-size:15px;">🐶 ${escapeHtml(p.petName)}</strong><br>
+            <span style="font-size:12px; color:var(--text-muted);">👤 ${escapeHtml(p.customerName || 'მომხმარებელი')}</span>
+          </td>
           <td>${escapeHtml(p.petBreed)} (${escapeHtml(p.petType)})</td>
-          <td><span style="color:${p.allergies.includes('ქათამ')?'#f87171':'var(--emerald)'}; font-weight:600;">${escapeHtml(p.allergies)}</span></td>
-          <td>${p.phone ? `<a href="tel:${p.phone}" style="color:#fff; text-decoration:none;">📞 ${p.phone}</a>` : '-'}</td>
+          <td><span style="color:${allergyColor}; font-weight:600;">${escapeHtml(p.allergies || 'არ აქვს')}</span></td>
+          <td>${p.phone ? `<a href="tel:${p.phone}" style="color:#fff; text-decoration:none;">📞 ${escapeHtml(p.phone)}</a>` : '-'}</td>
           <td>${escapeHtml(p.address || '-')}</td>
-          <td><span class="status-badge status-delivered">${p.totalOrders} შეკვეთა</span></td>
+          <td><span class="status-badge status-delivered">${p.totalOrders || 0} შეკვეთა</span></td>
         </tr>
-      `).join('');
+      `;
+      }).join('');
     }
 
     function filterProfiles() {
