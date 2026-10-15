@@ -1,5 +1,11 @@
 {
   "version": 2,
+  "crons": [
+    {
+      "path": "/api/cron-comments",
+      "schedule": "0 8 * * *"
+    }
+  ],
   "functions": {
     "api/index.js": {
       "includeFiles": "{public/**,data/**,src/data/**}"
@@ -9,12 +15,6 @@
     {
       "source": "/(.*)",
       "destination": "/api/index.js"
-    }
-  ],
-  "crons": [
-    {
-      "path": "/api/cron-comments",
-      "schedule": "*/10 * * * *"
     }
   ]
 }
