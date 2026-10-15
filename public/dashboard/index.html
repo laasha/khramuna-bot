@@ -178,6 +178,31 @@
     .stock-info h4 { font-size: 15px; margin-bottom: 4px; color: #fff; }
     .stock-info p { font-size: 12px; color: var(--text-muted); }
 
+    
+    /* Stock Quantity Controls & Low Stock Warning */
+    .stock-qty-control { display: flex; align-items: center; gap: 6px; background: rgba(15, 23, 42, 0.7); padding: 4px 8px; border-radius: 8px; border: 1px solid var(--border); }
+    .qty-btn { background: var(--bg-card); border: 1px solid var(--border); color: #fff; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 700; cursor: pointer; transition: 0.15s; }
+    .qty-btn:hover { background: var(--amber); color: #000; border-color: var(--amber); }
+    .qty-btn.plus5 { background: rgba(245, 158, 11, 0.15); color: var(--amber); border-color: rgba(245, 158, 11, 0.3); }
+    .qty-btn.plus5:hover { background: var(--amber); color: #000; }
+    .qty-display { font-size: 13px; font-weight: 700; color: #fff; min-width: 55px; text-align: center; }
+    .stock-badge-low { display: inline-block; background: rgba(245, 158, 11, 0.2); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.4); border-radius: 6px; padding: 2px 6px; font-size: 11px; font-weight: 600; margin-left: 6px; }
+    .stock-badge-out { display: inline-block; background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.4); border-radius: 6px; padding: 2px 6px; font-size: 11px; font-weight: 600; margin-left: 6px; }
+    .stock-badge-ok { display: inline-block; background: rgba(16, 185, 129, 0.2); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.4); border-radius: 6px; padding: 2px 6px; font-size: 11px; font-weight: 600; margin-left: 6px; }
+
+    /* Chat Search & Filter Bar */
+    .chat-search-panel { padding: 12px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 8px; background: rgba(15, 23, 42, 0.4); }
+    .filter-btn { background: rgba(30, 41, 59, 0.6); border: 1px solid var(--border); color: var(--text-muted); padding: 4px 10px; border-radius: 16px; font-size: 11px; font-weight: 600; cursor: pointer; transition: 0.15s; }
+    .filter-btn:hover { color: #fff; border-color: #64748b; }
+    .filter-btn.active { background: rgba(245, 158, 11, 0.2); border-color: var(--amber); color: var(--amber); }
+
+    /* Canned quick reply buttons */
+    .canned-btn { background: rgba(30, 41, 59, 0.85); border: 1px solid var(--border); color: #e2e8f0; padding: 5px 11px; border-radius: 8px; font-size: 12px; font-weight: 500; white-space: nowrap; cursor: pointer; transition: 0.15s; }
+    .canned-btn:hover { background: rgba(245, 158, 11, 0.25); color: #fff; border-color: var(--amber); }
+
+    /* Active Chat Customer CRM Dossier */
+    .active-chat-dossier { background: rgba(245, 158, 11, 0.08); border-left: 3px solid var(--amber); padding: 8px 14px; font-size: 12px; color: #f3f4f6; display: none; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--border); }
+
     /* Switch Component */
     .switch { position: relative; display: inline-block; width: 48px; height: 26px; }
     .switch input { opacity: 0; width: 0; height: 0; }
@@ -294,8 +319,19 @@
     <!-- TAB 2: LIVE CHATS INBOX -->
     <div class="tab-pane" id="tab-chats">
       <div class="chat-layout">
-        <div class="chat-list" id="chatsListContainer">
-          <div style="padding: 20px; text-align: center; color: var(--text-muted);">იტვირთება ჩათები...</div>
+        <div style="display: flex; flex-direction: column; width: 340px; border-right: 1px solid var(--border);">
+          <div class="chat-search-panel">
+            <input type="text" id="chatSearchInput" placeholder="🔍 ძებნა (სახელი, ცუგა, ტელ)..." oninput="filterChatsUI()" style="width:100%; padding:8px 12px; background:var(--bg-card); border:1px solid var(--border); border-radius:8px; color:#fff; font-size:13px;">
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button class="filter-btn active" data-filter="all" onclick="setChatFilter('all')">ყველა</button>
+              <button class="filter-btn" data-filter="attention" onclick="setChatFilter('attention')">🚨 ოპერატორი</button>
+              <button class="filter-btn" data-filter="paused" onclick="setChatFilter('paused')">⏸️ შეჩერებული</button>
+              <button class="filter-btn" data-filter="orders" onclick="setChatFilter('orders')">🛍️ შეკვეთით</button>
+            </div>
+          </div>
+          <div class="chat-list" id="chatsListContainer" style="flex: 1; border-right: none;">
+            <div style="padding: 20px; text-align: center; color: var(--text-muted);">იტვირთება ჩათები...</div>
+          </div>
         </div>
 
         <div class="chat-view">
@@ -309,12 +345,25 @@
             </div>
           </div>
 
+          <!-- Customer CRM Dossier Badge -->
+          <div class="active-chat-dossier" id="activeChatDossier">
+            <div id="dossierContent" style="display:flex; flex-wrap:wrap; gap:8px 16px; align-items:center;"></div>
+          </div>
+
           <div class="chat-messages" id="chatMessagesContainer">
             <div style="margin:auto; text-align:center; color:var(--text-muted); font-size:14px;">
               👈 აირჩიეთ ჩათი მარცხენა სიიდან შეტყობინებების სანახავად
             </div>
           </div>
 
+          <!-- Quick Canned Response Buttons -->
+          <div style="display: flex; gap: 6px; overflow-x: auto; padding: 8px 14px; background: rgba(15, 23, 42, 0.7); border-top: 1px solid var(--border);">
+            <span style="font-size:11px; color:var(--text-muted); align-self:center; font-weight:600; white-space:nowrap;">⚡ შაბლონები:</span>
+            <button class="canned-btn" onclick="useCannedReply('catalog')">📦 კატალოგი</button>
+            <button class="canned-btn" onclick="useCannedReply('bank')">💳 რეკვიზიტები</button>
+            <button class="canned-btn" onclick="useCannedReply('delivery')">🚚 თბილისის მიტანა</button>
+            <button class="canned-btn" onclick="useCannedReply('operator')">👤 ოპერატორი ჩაერთო</button>
+          </div>
           <div class="chat-reply-bar">
             <input type="text" id="adminReplyInput" class="chat-input" placeholder="მიწერეთ პასუხი კლიენტს (ბოტი დაპაუზდება 1 საათით)..." onkeydown="if(event.key==='Enter') sendAdminReply()">
             <button class="btn btn-primary" onclick="sendAdminReply()">გაგზავნა 🚀</button>
@@ -421,6 +470,8 @@
   <script>
     let authToken = localStorage.getItem('khramuna_admin_pin') || '';
     let currentActiveConv = null;
+    let allChats = [];
+    let activeChatFilter = "all";
     let allOrdersData = [];
     let allProfilesData = [];
 
@@ -633,40 +684,110 @@
 
       const data = await apiFetch('/api/dashboard/chats');
       if (data.success && data.chats) {
-        container.innerHTML = data.chats.map(c => `
-          <div class="chat-item ${c.needsHumanAttention ? 'attention' : ''}" onclick="openChat('${c.convId}', '${c.userId}', '${escapeHtml(c.userName)}', ${c.isBotPaused})" id="chatItem-${c.convId}">
-            <div class="chat-item-header">
-              <div class="chat-user-name">${escapeHtml(c.userName)}</div>
-              <div class="chat-time">${formatDate(c.updatedTime, true)}</div>
-            </div>
-            <div class="chat-snippet">${escapeHtml(c.snippet || 'შეტყობინება')}</div>
-            <div style="margin-top:6px; display:flex; gap:6px;">
-              ${c.needsHumanAttention ? '<span class="status-badge" style="background:rgba(239,68,68,0.2); color:#fca5a5;">🚨 ოპერატორი</span>' : ''}
-              ${c.isBotPaused ? '<span class="status-badge" style="background:rgba(245,158,11,0.2); color:#fbbf24;">⏸️ ბოტი შეჩერებულია</span>' : '<span class="status-badge" style="background:rgba(16,185,129,0.1); color:#34d399;">🤖 AI აქტიურია</span>'}
-            </div>
-          </div>
-        `).join('');
-
-        if (data.chats.length > 0 && !currentActiveConv) {
-          const first = data.chats[0];
-          openChat(first.convId, first.userId, first.userName, first.isBotPaused);
-        }
+        allChats = data.chats;
+        renderFilteredChats();
       }
     }
 
-    async function openChat(convId, userId, userName, isBotPaused) {
-      currentActiveConv = { convId, userId, userName, isBotPaused };
+    function setChatFilter(filter) {
+      activeChatFilter = filter;
+      document.querySelectorAll('.chat-search-panel .filter-btn').forEach(btn => {
+        if (btn.getAttribute('data-filter') === filter) btn.classList.add('active');
+        else btn.classList.remove('active');
+      });
+      renderFilteredChats();
+    }
+
+    function filterChatsUI() {
+      renderFilteredChats();
+    }
+
+    function renderFilteredChats() {
+      const container = document.getElementById('chatsListContainer');
+      const q = (document.getElementById('chatSearchInput')?.value || '').toLowerCase().trim();
+
+      let filtered = allChats;
+
+      if (activeChatFilter === 'attention') {
+        filtered = filtered.filter(c => c.needsHumanAttention);
+      } else if (activeChatFilter === 'paused') {
+        filtered = filtered.filter(c => c.isBotPaused);
+      } else if (activeChatFilter === 'orders') {
+        filtered = filtered.filter(c => c.ordersCount > 0);
+      }
+
+      if (q) {
+        filtered = filtered.filter(c => 
+          (c.userName && c.userName.toLowerCase().includes(q)) ||
+          (c.snippet && c.snippet.toLowerCase().includes(q)) ||
+          (c.profile?.petName && c.profile.petName.toLowerCase().includes(q)) ||
+          (c.profile?.phone && c.profile.phone.includes(q))
+        );
+      }
+
+      if (filtered.length === 0) {
+        container.innerHTML = '<div style="padding:24px 16px; text-align:center; color:var(--text-muted); font-size:13px;">დიალოგები ვერ მოიძებნა</div>';
+        return;
+      }
+
+      container.innerHTML = filtered.map(c => `
+        <div class="chat-item ${c.needsHumanAttention ? 'attention' : ''}" onclick="openChat('${c.convId}')" id="chatItem-${c.convId}">
+          <div class="chat-item-header">
+            <div class="chat-user-name">${escapeHtml(c.userName)}</div>
+            <div class="chat-time">${formatDate(c.updatedTime, true)}</div>
+          </div>
+          <div class="chat-snippet">${escapeHtml(c.snippet || 'შეტყობინება')}</div>
+          <div style="margin-top:6px; display:flex; gap:5px; flex-wrap:wrap;">
+            ${c.needsHumanAttention ? '<span class="status-badge" style="background:rgba(239,68,68,0.2); color:#fca5a5; font-size:10px;">🚨 ოპერატორი</span>' : ''}
+            ${c.isBotPaused ? '<span class="status-badge" style="background:rgba(245,158,11,0.2); color:#fbbf24; font-size:10px;">⏸️ შეჩერებულია</span>' : '<span class="status-badge" style="background:rgba(16,185,129,0.1); color:#34d399; font-size:10px;">🤖 AI</span>'}
+            ${c.ordersCount > 0 ? `<span class="status-badge" style="background:rgba(59,130,246,0.15); color:#93c5fd; font-size:10px;">🛍️ ${c.ordersCount} შეკვეთა</span>` : ''}
+            ${c.profile?.petName ? `<span class="status-badge" style="background:rgba(168,85,247,0.15); color:#d8b4fe; font-size:10px;">🐾 ${escapeHtml(c.profile.petName)}</span>` : ''}
+          </div>
+        </div>
+      `).join('');
+
+      if (!currentActiveConv && filtered.length > 0) {
+        openChat(filtered[0].convId);
+      }
+    }
+
+    async function openChat(convId) {
+      const c = allChats.find(chat => chat.convId === convId);
+      if (!c) return;
+
+      currentActiveConv = { convId: c.convId, userId: c.userId, userName: c.userName, isBotPaused: c.isBotPaused };
 
       document.querySelectorAll('.chat-item').forEach(el => el.classList.remove('active'));
       const activeEl = document.getElementById(`chatItem-${convId}`);
       if (activeEl) activeEl.classList.add('active');
 
-      document.getElementById('activeChatName').textContent = userName;
-      document.getElementById('activeChatStatus').textContent = `User ID: ${userId} • ${isBotPaused ? 'ბოტი შეჩერებულია (ადამიანის რეჟიმი)' : 'ბოტი აქტიურია'}`;
+      document.getElementById('activeChatName').textContent = c.userName;
+      document.getElementById('activeChatStatus').textContent = `User ID: ${c.userId} • ${c.isBotPaused ? 'ბოტი შეჩერებულია (ადამიანის რეჟიმი)' : 'ბოტი აქტიურია'}`;
       
       const toggleBtn = document.getElementById('btnToggleBot');
-      toggleBtn.textContent = isBotPaused ? '▶️ ბოტის ჩართვა' : '⏸️ ბოტის შეჩერება (2 სთ)';
+      toggleBtn.textContent = c.isBotPaused ? '▶️ ბოტის ჩართვა' : '⏸️ ბოტის შეჩერება (2 სთ)';
       document.getElementById('chatControlBar').style.display = 'flex';
+
+      // Render Customer CRM Dossier Card
+      const dossierEl = document.getElementById('activeChatDossier');
+      const dossierContent = document.getElementById('dossierContent');
+      if (c.profile) {
+        const p = c.profile;
+        dossierContent.innerHTML = `
+          <span>🐶 ცუგა: <strong style="color:#fff;">${escapeHtml(p.petName || 'უცნობი')}</strong> (${escapeHtml(p.petBreed || 'ჯიში უცნობია')})</span>
+          <span>⚠️ ალერგია: <strong style="color:${p.allergies ? '#fca5a5' : '#86efac'};">${escapeHtml(p.allergies || 'არ აქვს')}</strong></span>
+          ${p.phone ? `<span>📞 <a href="tel:${p.phone}" style="color:var(--amber); font-weight:600; text-decoration:none;">${escapeHtml(p.phone)}</a></span>` : ''}
+          ${p.address ? `<span>📍 ${escapeHtml(p.address)}</span>` : ''}
+          <span>🛍️ <strong>${c.ordersCount || 0}</strong> შეკვეთა (${c.totalSpent || 0} ₾)</span>
+        `;
+        dossierEl.style.display = 'flex';
+      } else {
+        dossierContent.innerHTML = `
+          <span>ℹ️ ახალი მომხმარებელი (პროფილი ბაზაში ჯერ არ არის)</span>
+          <span>🛍️ <strong>${c.ordersCount || 0}</strong> შეკვეთა (${c.totalSpent || 0} ₾)</span>
+        `;
+        dossierEl.style.display = 'flex';
+      }
 
       const msgContainer = document.getElementById('chatMessagesContainer');
       msgContainer.innerHTML = '<div style="margin:auto; color:var(--text-muted);">იტვირთება შეტყობინებები...</div>';
@@ -688,6 +809,20 @@
       }
     }
 
+    function useCannedReply(type) {
+      const input = document.getElementById('adminReplyInput');
+      if (type === 'catalog') {
+        input.value = "ჩვენი ნატურალური ხრამუნები 🐾:\n1. დრაკონის თათები - 9.50 ₾\n2. ღრუბელი - 9.00 ₾\n3. სუპერ-კუბები - 11.00 ₾\n4. ჯადოსნური პუდრა - 10.50 ₾\n★ Full Pack (სრული ნაკრები + უფასო მიტანა) - 49.50 ₾\nრომელი გაგირჩიოთ თქვენი ცუგასთვის? ❤️";
+      } else if (type === 'bank') {
+        input.value = "გადახდის რეკვიზიტები:\nTBC: GE00TB0000000000000000\nმიმღები: ხრამუნა\nდანიშნულებაში მიუთითეთ თქვენი ტელეფონის ნომერი ❤️🐾";
+      } else if (type === 'delivery') {
+        input.value = "მიტანის პირობები (თბილისი):\n• 1 შეკვრაზე კურიერის საფასურია 5 ₾\n• 2 ან მეტ შეკვრაზე (ასევე Full Pack-ზე) მიტანა სრულიად უფასოა!\nვაგზავნით იმავე ან მეორე დღეს 🚀";
+      } else if (type === 'operator') {
+        input.value = "მოგესალმებით! მე ვარ ხრამუნას დამფუძნებელი, პირადად ჩავერთე დიალოგში თქვენს დასახმარებლად. რით შემიძლია დაგეხმაროთ? ❤️🐾";
+      }
+      input.focus();
+    }
+
     async function toggleBotForActiveUser() {
       if (!currentActiveConv) return;
       const shouldPause = !currentActiveConv.isBotPaused;
@@ -700,8 +835,11 @@
 
       if (res.success) {
         currentActiveConv.isBotPaused = shouldPause;
-        openChat(currentActiveConv.convId, currentActiveConv.userId, currentActiveConv.userName, shouldPause);
-        loadChats();
+        // update local allChats entry
+        const found = allChats.find(x => x.convId === currentActiveConv.convId);
+        if (found) found.isBotPaused = shouldPause;
+        renderFilteredChats();
+        openChat(currentActiveConv.convId);
       }
     }
 
@@ -721,8 +859,10 @@
         if (res.success) {
           input.value = '';
           currentActiveConv.isBotPaused = true;
-          // Refresh message view
-          openChat(currentActiveConv.convId, currentActiveConv.userId, currentActiveConv.userName, true);
+          const found = allChats.find(x => x.convId === currentActiveConv.convId);
+          if (found) found.isBotPaused = true;
+          renderFilteredChats();
+          openChat(currentActiveConv.convId);
         } else {
           alert('შეტყობინება ვერ გაიგზავნა');
         }
@@ -842,18 +982,57 @@
       const container = document.getElementById('stockCardsContainer');
       const data = await apiFetch('/api/dashboard/stock');
       if (data.success && data.stock) {
-        container.innerHTML = Object.entries(data.stock).map(([key, item]) => `
-          <div class="stock-card">
-            <div class="stock-info">
-              <h4>${escapeHtml(item.name)}</h4>
-              <p>${item.inStock ? '🟢 მარაგშია (' + (item.quantity || 5) + ' ცალი)' : '🔴 ამოწურულია (24 სთ დამზადება)'}</p>
+        container.innerHTML = Object.entries(data.stock).map(([key, item]) => {
+          const qty = typeof item.quantity === 'number' ? item.quantity : 5;
+          const isOut = !item.inStock || qty <= 0;
+          const isLow = !isOut && qty <= 3;
+
+          let badgeHtml = '<span class="stock-badge-ok">🟢 მარაგშია</span>';
+          if (isOut) badgeHtml = '<span class="stock-badge-out">🔴 ამოწურულია</span>';
+          else if (isLow) badgeHtml = `<span class="stock-badge-low">⚠️ იწურება (${qty})</span>`;
+
+          return `
+            <div class="stock-card" style="display:flex; flex-direction:column; align-items:stretch; gap:14px;">
+              <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <div>
+                  <div style="display:flex; align-items:center; gap:4px;">
+                    <h4 style="font-size:16px; margin:0; color:#fff;">${escapeHtml(item.name)}</h4>
+                    ${badgeHtml}
+                  </div>
+                  <p style="font-size:12px; color:var(--text-muted); margin-top:4px;">
+                    ${isOut ? 'ამოწურულია — ახალი პარტიის დეჰიდრაციას სჭირდება 24 სთ' : 'მზა პარტია თბილისში დაუყოვნებლივ გასაგზავნად'}
+                  </p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" ${item.inStock ? 'checked' : ''} onchange="toggleStock('${key}', this.checked)">
+                  <span class="slider"></span>
+                </label>
+              </div>
+
+              <div style="display:flex; justify-content:space-between; align-items:center; background:rgba(0,0,0,0.25); padding:8px 12px; border-radius:10px; border:1px solid var(--border);">
+                <span style="font-size:13px; color:#cbd5e1; font-weight:600;">მარაგის რაოდენობა:</span>
+                <div class="stock-qty-control">
+                  <button class="qty-btn" onclick="adjustStockQty('${key}', -1)" ${qty <= 0 ? 'disabled' : ''}>-1</button>
+                  <span class="qty-display">${qty} ცალი</span>
+                  <button class="qty-btn" onclick="adjustStockQty('${key}', 1)">+1</button>
+                  <button class="qty-btn plus5" onclick="adjustStockQty('${key}', 5)">+5</button>
+                </div>
+              </div>
             </div>
-            <label class="switch">
-              <input type="checkbox" ${item.inStock ? 'checked' : ''} onchange="toggleStock('${key}', this.checked)">
-              <span class="slider"></span>
-            </label>
-          </div>
-        `).join('');
+          `;
+        }).join('');
+      }
+    }
+
+    async function adjustStockQty(key, delta) {
+      const res = await apiFetch('/api/dashboard/stock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, delta })
+      });
+      if (res.success) {
+        loadStock();
+        loadOverviewStats();
       }
     }
 
@@ -864,6 +1043,7 @@
         body: JSON.stringify({ key, inStock })
       });
       loadStock();
+      loadOverviewStats();
     }
 
     function downloadOrdersCsv() {

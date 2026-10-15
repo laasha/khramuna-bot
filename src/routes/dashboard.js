@@ -15,6 +15,7 @@ import {
   markCommentReplied
 } from '../services/storage.js';
 import { sendMessengerMessage, replyToComment } from '../services/facebook.js';
+import { getStock, updateStock } from '../services/stock.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -74,12 +75,7 @@ router.get('/stats', async (req, res) => {
     const profilesMap = getProfilesMap();
     const profilesCount = Object.keys(profilesMap).length;
 
-    let stockData = {};
-    try {
-      if (fs.existsSync(STOCK_FILE)) {
-        stockData = JSON.parse(fs.readFileSync(STOCK_FILE, 'utf8'));
-      }
-    } catch (e) {}
+    const stockData = getStock();
 
     res.json({
       success: true,
@@ -124,11 +120,14 @@ router.get('/chats', async (req, res) => {
   if (!token) return res.status(500).json({ error: 'No FB_PAGE_ACCESS_TOKEN configured' });
 
   try {
-    const url = `https://graph.facebook.com/v19.0/${PAGE_ID}/conversations?fields=id,updated_time,unread_count,senders,snippet&limit=25&access_token=${token}`;
+    const url = `https://graph.facebook.com/v19.0/${PAGE_ID}/conversations?fields=id,updated_time,unread_count,senders,snippet&limit=30&access_token=${token}`;
     const fbRes = await fetch(url);
     const fbData = await fbRes.json();
 
-    const chats = (fbData.data || []).map(c => {
+    const profilesMap = getProfilesMap();
+    const allOrders = getOrders();
+
+    let chats = (fbData.data || []).map(c => {
       const customer = c.senders?.data?.find(s => s.id !== PAGE_ID) || {};
       const isPaused = isBotPausedForUser(customer.id);
       
@@ -140,17 +139,58 @@ router.get('/chats', async (req, res) => {
         snippetLower.includes('პირადი') ||
         snippetLower.includes('რეკვიზიტ');
 
+      // Match pet profile by ID or Customer Name
+      let profile = profilesMap[customer.id] || null;
+      if (!profile && customer.name) {
+        const normName = customer.name.toLowerCase().trim();
+        profile = Object.values(profilesMap).find(p => 
+          p.customerName && p.customerName.toLowerCase().trim() === normName
+        ) || null;
+      }
+
+      // Match customer orders
+      const userOrders = allOrders.filter(o => 
+        (customer.id && o.userId === customer.id) ||
+        (customer.name && o.customerName && o.customerName.toLowerCase().trim() === customer.name.toLowerCase().trim())
+      );
+      const ordersCount = userOrders.length;
+      const totalSpent = userOrders.reduce((sum, o) => sum + (Number(o.price) || 0), 0);
+
       return {
         convId: c.id,
         userId: customer.id,
-        userName: customer.name || 'მომხმარებელი',
+        userName: customer.name || profile?.customerName || 'მომხმარებელი',
         updatedTime: c.updated_time,
         unreadCount: c.unread_count || 0,
         snippet: c.snippet || '',
         isBotPaused: isPaused,
-        needsHumanAttention
+        needsHumanAttention,
+        profile,
+        ordersCount,
+        totalSpent
       };
     });
+
+    // Query Search (customer name, pet name, phone, snippet)
+    const q = (req.query.q || '').toLowerCase().trim();
+    if (q) {
+      chats = chats.filter(c => 
+        (c.userName && c.userName.toLowerCase().includes(q)) ||
+        (c.snippet && c.snippet.toLowerCase().includes(q)) ||
+        (c.profile?.petName && c.profile.petName.toLowerCase().includes(q)) ||
+        (c.profile?.phone && c.profile.phone.includes(q))
+      );
+    }
+
+    // Status filtering
+    const filter = (req.query.filter || 'all').toLowerCase();
+    if (filter === 'attention') {
+      chats = chats.filter(c => c.needsHumanAttention);
+    } else if (filter === 'paused') {
+      chats = chats.filter(c => c.isBotPaused);
+    } else if (filter === 'orders') {
+      chats = chats.filter(c => c.ordersCount > 0);
+    }
 
     res.json({ success: true, chats });
   } catch (err) {
@@ -344,7 +384,7 @@ router.get('/profiles', (req, res) => {
 // 9. Live Stock Config
 router.get('/stock', (req, res) => {
   try {
-    const stock = JSON.parse(fs.readFileSync(STOCK_FILE, 'utf8'));
+    const stock = getStock();
     res.json({ success: true, stock });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -353,16 +393,13 @@ router.get('/stock', (req, res) => {
 
 router.post('/stock', (req, res) => {
   try {
-    const { key, inStock, quantity } = req.body || {};
-    const stock = JSON.parse(fs.readFileSync(STOCK_FILE, 'utf8'));
+    const { key, inStock, quantity, delta } = req.body || {};
+    if (!key) return res.status(400).json({ error: 'Product key is required' });
 
-    if (key && stock[key]) {
-      if (typeof inStock === 'boolean') stock[key].inStock = inStock;
-      if (typeof quantity === 'number') stock[key].quantity = quantity;
-      fs.writeFileSync(STOCK_FILE, JSON.stringify(stock, null, 2), 'utf8');
-      return res.json({ success: true, stock });
-    }
-    res.status(400).json({ error: 'Invalid product key' });
+    const stock = updateStock(key, { inStock, quantity, delta });
+    if (!stock) return res.status(400).json({ error: 'Invalid product key' });
+
+    return res.json({ success: true, stock });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

@@ -1,4 +1,4 @@
-import stock from '../config/stock.json' with { type: 'json' };
+import { getStock } from './stock.js';
 import catalog from '../config/catalog.json' with { type: 'json' };
 
 const GEMINI_TEXT_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
@@ -10,7 +10,8 @@ const GEMINI_FALLBACK_URL = 'https://generativelanguage.googleapis.com/v1beta/mo
  * System instruction defining the Khramuna Founder/Consultant persona and natural conversation.
  */
 function buildSystemPrompt(contextOptions = {}) {
-  const stockLines = Object.values(stock).map(s => `• ${s.name}: ${s.inStock ? `${s.quantity || 5} ცალი მზა მარაგში` : 'დროებით ამოწურულია'} (დამზადებას/დეჰიდრაციას სჭირდება ${s.productionHours || 24} საათი)`).join('\n');
+  const currentStock = getStock();
+  const stockLines = Object.values(currentStock).map(s => `• ${s.name}: ${s.inStock ? `${s.quantity ?? 5} ცალი მზა მარაგში` : 'დროებით ამოწურულია'} (დამზადებას/დეჰიდრაციას სჭირდება ${s.productionHours || 24} საათი)`).join('\n');
   const stockSnippet = `
 ==================== მიმდინარე მარაგები და დამზადების დრო (Live Stock) ====================
 ${stockLines}
