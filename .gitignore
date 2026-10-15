@@ -6,3 +6,8 @@ cloudflared.exe
 .vercel
 
 .vercel
+
+all_conversations_dump.json
+eval_results_50.json
+run_50_evals.js
+public/images/debug_*
