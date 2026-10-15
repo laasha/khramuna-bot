@@ -48,6 +48,7 @@ function enqueueUserMessage(senderPsid, text) {
 }
 
 import 'dotenv/config';
+import dashboardRouter from './routes/dashboard.js';
 import express from 'express';
 import fs from 'node:fs';
 import path from 'node:path';
@@ -82,6 +83,12 @@ const VERIFY_TOKEN = process.env.FB_VERIFY_TOKEN || 'khramuna_secret_verify_toke
 app.use(express.json());
 app.use(express.static('public'));
 const BASE_HOST = process.env.PUBLIC_URL || 'https://khramuna-bot.vercel.app';
+
+// Mount Khramuna Admin Dashboard
+app.use('/api/dashboard', dashboardRouter);
+app.get(['/dashboard', '/admin'], (req, res) => {
+  res.sendFile(path.resolve(__dirname, '../public/dashboard/index.html'));
+});
 
 // Healthcheck
 app.get('/health', (req, res) => {

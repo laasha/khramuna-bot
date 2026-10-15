@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ხრამუნა • Admin Dashboard & Control Center</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #090d16;
+      --card-bg: rgba(19, 27, 46, 0.75);
+      --card-border: rgba(255, 255, 255, 0.08);
+      --amber: #f59e0b;
+      --amber-glow: rgba(245, 158, 11, 0.25);
+      --emerald: #10b981;
+      --emerald-glow: rgba(16, 185, 129, 0.2);
+      --rose: #ef4444;
+      --rose-glow: rgba(239, 68, 68, 0.25);
+      --text: #f1f5f9;
+      --text-muted: #94a3b8;
+      --surface: #1e293b;
+      --surface-light: #334155;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Noto Sans Georgian', -apple-system, sans-serif; }
+    body { background-color: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
+
+    /* Top Bar */
+    header {
+      background: rgba(11, 15, 25, 0.85);
+      backdrop-filter: blur(16px);
+      border-bottom: 1px solid var(--card-border);
+      padding: 14px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+    .brand-group { display: flex; align-items: center; gap: 12px; }
+    .brand-logo { font-size: 22px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px; }
+    .brand-badge { background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; font-size: 11px; font-weight: 700; padding: 3px 8px; border-radius: 20px; }
+    .live-status { display: flex; align-items: center; gap: 6px; font-size: 12px; color: var(--emerald); background: rgba(16, 185, 129, 0.1); border: 1px solid rgba(16, 185, 129, 0.2); padding: 4px 10px; border-radius: 20px; }
+    .pulse-dot { width: 8px; height: 8px; background: var(--emerald); border-radius: 50%; box-shadow: 0 0 8px var(--emerald); animation: pulse 2s infinite; }
+    @keyframes pulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.5; transform: scale(0.85); } }
+
+    .header-actions { display: flex; gap: 10px; align-items: center; }
+    .btn { padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s ease; border: 1px solid transparent; display: inline-flex; align-items: center; gap: 6px; }
+    .btn-primary { background: linear-gradient(135deg, #f59e0b, #d97706); color: #000; }
+    .btn-primary:hover { opacity: 0.92; transform: translateY(-1px); }
+    .btn-secondary { background: var(--surface); color: var(--text); border-color: var(--card-border); }
+    .btn-secondary:hover { background: var(--surface-light); }
+    .btn-danger { background: rgba(239, 68, 68, 0.15); color: #fca5a5; border-color: rgba(239, 68, 68, 0.3); }
+    .btn-danger:hover { background: rgba(239, 68, 68, 0.25); }
+
+    /* Navigation Tabs */
+    nav {
+      background: rgba(15, 23, 42, 0.6);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--card-border);
+      padding: 0 24px;
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+    }
+    .tab-btn {
+      padding: 14px 16px;
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      transition: all 0.2s;
+      white-space: nowrap;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .tab-btn:hover { color: #fff; }
+    .tab-btn.active { color: var(--amber); border-bottom-color: var(--amber); }
+    .badge-count { background: var(--rose); color: #fff; font-size: 11px; padding: 2px 6px; border-radius: 10px; font-weight: 700; }
+
+    /* Main Container */
+    main { flex: 1; padding: 24px; max-width: 1440px; margin: 0 auto; width: 100%; }
+
+    /* KPI Grid */
+    .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; margin-bottom: 24px; }
+    .kpi-card {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    }
+    .kpi-title { font-size: 13px; color: var(--text-muted); font-weight: 500; margin-bottom: 8px; display: flex; align-items: center; justify-content: space-between; }
+    .kpi-value { font-size: 28px; font-weight: 700; color: #fff; }
+    .kpi-sub { font-size: 12px; color: var(--emerald); margin-top: 6px; display: flex; align-items: center; gap: 4px; }
+    .kpi-card.amber .kpi-value { color: var(--amber); }
+    .kpi-card.rose .kpi-value { color: #f87171; }
+
+    /* Tab Panes */
+    .tab-pane { display: none; }
+    .tab-pane.active { display: block; animation: fadeIn 0.25s ease; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: translateY(0); } }
+
+    /* Priority Attention Banner */
+    .alert-banner {
+      background: linear-gradient(135deg, rgba(239, 68, 68, 0.15), rgba(245, 158, 11, 0.15));
+      border: 1px solid rgba(239, 68, 68, 0.35);
+      border-radius: 14px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+    }
+    .alert-text { font-size: 14px; line-height: 1.5; }
+    .alert-text strong { color: #fca5a5; }
+
+    /* Cards & Tables */
+    .panel {
+      background: var(--card-bg);
+      backdrop-filter: blur(16px);
+      border: 1px solid var(--card-border);
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      margin-bottom: 24px;
+    }
+    .panel-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; flex-wrap: wrap; gap: 12px; }
+    .panel-title { font-size: 18px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 8px; }
+
+    table { width: 100%; border-collapse: collapse; text-align: left; font-size: 14px; }
+    th { color: var(--text-muted); font-weight: 600; padding: 12px 14px; border-bottom: 1px solid var(--card-border); font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; }
+    td { padding: 14px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); vertical-align: middle; }
+    tr:hover td { background: rgba(255, 255, 255, 0.02); }
+
+    .status-badge { display: inline-flex; align-items: center; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+    .status-paid { background: rgba(16, 185, 129, 0.15); color: #34d399; border: 1px solid rgba(16, 185, 129, 0.3); }
+    .status-pending { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+    .status-delivered { background: rgba(99, 102, 241, 0.15); color: #a5b4fc; border: 1px solid rgba(99, 102, 241, 0.3); }
+
+    /* Live Chat Inbox Grid */
+    .chat-layout { display: grid; grid-template-columns: 360px 1fr; gap: 20px; height: 680px; }
+    .chat-list { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; overflow-y: auto; display: flex; flex-direction: column; }
+    .chat-item { padding: 14px 16px; border-bottom: 1px solid rgba(255, 255, 255, 0.04); cursor: pointer; transition: background 0.15s; }
+    .chat-item:hover { background: rgba(255, 255, 255, 0.04); }
+    .chat-item.active { background: rgba(245, 158, 11, 0.12); border-left: 3px solid var(--amber); }
+    .chat-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+    .chat-user-name { font-weight: 700; font-size: 14px; color: #fff; }
+    .chat-time { font-size: 11px; color: var(--text-muted); }
+    .chat-snippet { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .chat-view { background: var(--card-bg); border: 1px solid var(--card-border); border-radius: 16px; display: flex; flex-direction: column; overflow: hidden; }
+    .chat-view-header { padding: 14px 20px; border-bottom: 1px solid var(--card-border); background: rgba(15, 23, 42, 0.5); display: flex; justify-content: space-between; align-items: center; }
+    .chat-messages { flex: 1; padding: 20px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; }
+    .msg-bubble { max-width: 75%; padding: 12px 16px; border-radius: 14px; font-size: 14px; line-height: 1.5; }
+    .msg-bubble.user { background: var(--surface); color: #fff; align-self: flex-start; border-bottom-left-radius: 2px; }
+    .msg-bubble.bot { background: linear-gradient(135deg, rgba(245, 158, 11, 0.25), rgba(217, 119, 6, 0.25)); border: 1px solid rgba(245, 158, 11, 0.3); color: #fff; align-self: flex-end; border-bottom-right-radius: 2px; }
+    .msg-time { font-size: 10px; color: var(--text-muted); margin-top: 4px; text-align: right; }
+
+    .chat-reply-bar { padding: 14px 20px; border-top: 1px solid var(--card-border); background: rgba(15, 23, 42, 0.7); display: flex; gap: 10px; }
+    .chat-input { flex: 1; background: var(--surface); border: 1px solid var(--card-border); border-radius: 10px; padding: 10px 14px; color: #fff; font-size: 14px; outline: none; }
+    .chat-input:focus { border-color: var(--amber); }
+
+    /* Stock Switch Grid */
+    .stock-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; }
+    .stock-card { background: rgba(30, 41, 59, 0.6); border: 1px solid var(--card-border); border-radius: 14px; padding: 18px; display: flex; justify-content: space-between; align-items: center; }
+    .stock-info h4 { font-size: 15px; margin-bottom: 4px; color: #fff; }
+    .stock-info p { font-size: 12px; color: var(--text-muted); }
+
+    /* Switch Component */
+    .switch { position: relative; display: inline-block; width: 48px; height: 26px; }
+    .switch input { opacity: 0; width: 0; height: 0; }
+    .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #475569; transition: .25s; border-radius: 24px; }
+    .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 4px; bottom: 4px; background-color: white; transition: .25s; border-radius: 50%; }
+    input:checked + .slider { background-color: var(--emerald); }
+    input:checked + .slider:before { transform: translateX(22px); }
+
+    /* Auth Screen Modal */
+    #authModal {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(9, 13, 22, 0.95); backdrop-filter: blur(20px);
+      display: flex; justify-content: center; align-items: center; z-index: 1000;
+    }
+    .auth-card {
+      background: #131b2e; border: 1px solid var(--card-border); border-radius: 20px;
+      padding: 36px; max-width: 380px; width: 90%; text-align: center;
+      box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+    }
+    .auth-pin-input {
+      width: 100%; padding: 14px; font-size: 20px; text-align: center; letter-spacing: 6px;
+      background: #0b0f19; border: 1px solid var(--card-border); border-radius: 12px;
+      color: #fff; margin: 20px 0; outline: none;
+    }
+    .auth-pin-input:focus { border-color: var(--amber); box-shadow: 0 0 12px var(--amber-glow); }
+
+    @media (max-width: 900px) {
+      .chat-layout { grid-template-columns: 1fr; height: auto; }
+      .chat-list { height: 300px; }
+      .chat-view { height: 500px; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top Navigation Header -->
+  <header>
+    <div class="brand-group">
+      <div class="brand-logo">🐾 ხრამუნა <span class="brand-badge">ADMIN</span></div>
+      <div class="live-status"><div class="pulse-dot"></div> სისტემა აქტიურია</div>
+    </div>
+    <div class="header-actions">
+      <button class="btn btn-secondary" onclick="loadAllData()" id="refreshBtn">🔄 განახლება</button>
+      <button class="btn btn-danger" onclick="logoutAdmin()">🚪 გასვლა</button>
+    </div>
+  </header>
+
+  <!-- Section Tabs -->
+  <nav>
+    <button class="tab-btn active" onclick="switchTab('overview')">📊 მიმოხილვა</button>
+    <button class="tab-btn" onclick="switchTab('chats')">💬 ჩათები <span class="badge-count" id="chatsAlertCount" style="display:none;">0</span></button>
+    <button class="tab-btn" onclick="switchTab('comments')">📝 კომენტარები</button>
+    <button class="tab-btn" onclick="switchTab('orders')">🛍️ შეკვეთები</button>
+    <button class="tab-btn" onclick="switchTab('profiles')">🐾 ცუგების ბაზა</button>
+    <button class="tab-btn" onclick="switchTab('stock')">📦 მარაგები</button>
+  </nav>
+
+  <!-- Main Content Area -->
+  <main>
+
+    <!-- Top KPI Cards -->
+    <div class="kpi-grid">
+      <div class="kpi-card amber">
+        <div class="kpi-title">ჯამური შემოსავალი <span>💰</span></div>
+        <div class="kpi-value" id="kpiRevenue">0.00 ₾</div>
+        <div class="kpi-sub">სრულად დამოწმებული შეკვეთები</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">სულ შეკვეთები <span>📦</span></div>
+        <div class="kpi-value" id="kpiOrders">0</div>
+        <div class="kpi-sub" id="kpiPaidOrders">0 დადასტურებული</div>
+      </div>
+      <div class="kpi-card rose" id="kpiAttentionCard">
+        <div class="kpi-title">ყურადღება / ოპერატორი <span>🚨</span></div>
+        <div class="kpi-value" id="kpiAttention">0</div>
+        <div class="kpi-sub" style="color:#f87171;">ადამიანის ჩარევა ჩათში</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-title">ცუგების CRM პროფილი <span>🐶</span></div>
+        <div class="kpi-value" id="kpiProfiles">0</div>
+        <div class="kpi-sub">ჯიშები, ასაკი, ალერგიები</div>
+      </div>
+    </div>
+
+    <!-- TAB 1: OVERVIEW -->
+    <div class="tab-pane active" id="tab-overview">
+      <div id="urgentAlertBox"></div>
+
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">⚡ ბოლო შეკვეთები</div>
+          <button class="btn btn-secondary" onclick="switchTab('orders')">ყველა შეკვეთა →</button>
+        </div>
+        <div style="overflow-x: auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>თარიღი</th>
+                <th>კლიენტი</th>
+                <th>ტელეფონი</th>
+                <th>პროდუქტი</th>
+                <th>თანხა</th>
+                <th>სტატუსი</th>
+              </tr>
+            </thead>
+            <tbody id="overviewOrdersTable">
+              <tr><td colspan="6" style="text-align:center; color:var(--text-muted);">იტვირთება...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: LIVE CHATS INBOX -->
+    <div class="tab-pane" id="tab-chats">
+      <div class="chat-layout">
+        <div class="chat-list" id="chatsListContainer">
+          <div style="padding: 20px; text-align: center; color: var(--text-muted);">იტვირთება ჩათები...</div>
+        </div>
+
+        <div class="chat-view">
+          <div class="chat-view-header">
+            <div>
+              <h3 id="activeChatName" style="color:#fff; font-size:16px;">აირჩიეთ დიალოგი</h3>
+              <p id="activeChatStatus" style="font-size:12px; color:var(--text-muted);">ID: -</p>
+            </div>
+            <div id="chatControlBar" style="display:none; gap:10px;">
+              <button class="btn btn-secondary" id="btnToggleBot" onclick="toggleBotForActiveUser()">⏸️ ბოტის შეჩერება</button>
+            </div>
+          </div>
+
+          <div class="chat-messages" id="chatMessagesContainer">
+            <div style="margin:auto; text-align:center; color:var(--text-muted); font-size:14px;">
+              👈 აირჩიეთ ჩათი მარცხენა სიიდან შეტყობინებების სანახავად
+            </div>
+          </div>
+
+          <div class="chat-reply-bar">
+            <input type="text" id="adminReplyInput" class="chat-input" placeholder="მიწერეთ პასუხი კლიენტს (ბოტი დაპაუზდება 1 საათით)..." onkeydown="if(event.key==='Enter') sendAdminReply()">
+            <button class="btn btn-primary" onclick="sendAdminReply()">გაგზავნა 🚀</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: COMMENTS RADAR -->
+    <div class="tab-pane" id="tab-comments">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">💬 Facebook & Instagram კომენტარები</div>
+          <button class="btn btn-secondary" onclick="loadComments()">განახლება</button>
+        </div>
+        <div id="commentsContainer">
+          <p style="color:var(--text-muted); text-align:center;">იტვირთება კომენტარები...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: ORDERS & CRM -->
+    <div class="tab-pane" id="tab-orders">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">📦 შეკვეთების სრული ბაზა</div>
+          <button class="btn btn-secondary" onclick="downloadOrdersCsv()">📥 CSV ექსპორტი (Excel)</button>
+        </div>
+        <div style="overflow-x: auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>ID / თარიღი</th>
+                <th>მომხმარებელი</th>
+                <th>ტელეფონი</th>
+                <th>მისამართი & ქალაქი</th>
+                <th>პროდუქტი</th>
+                <th>თანხა</th>
+                <th>გადახდა</th>
+                <th>სტატუსის შეცვლა</th>
+              </tr>
+            </thead>
+            <tbody id="allOrdersTable">
+              <tr><td colspan="8" style="text-align:center; color:var(--text-muted);">იტვირთება...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: PET CRM PROFILES -->
+    <div class="tab-pane" id="tab-profiles">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">🐾 შინაური ცხოველების ბაზა (CRM Profiles)</div>
+          <input type="text" id="profileSearchInput" placeholder="ძებნა სახელით, ჯიშით ან ალერგიით..." class="chat-input" style="max-width:320px;" oninput="filterProfiles()">
+        </div>
+        <div style="overflow-x: auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>ოთხფეხა</th>
+                <th>ჯიში & ტიპი</th>
+                <th>ალერგიები</th>
+                <th>პატრონის ტელეფონი</th>
+                <th>მისამართი</th>
+                <th>შეკვეთები</th>
+              </tr>
+            </thead>
+            <tbody id="profilesTable">
+              <tr><td colspan="6" style="text-align:center; color:var(--text-muted);">იტვირთება...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 6: LIVE STOCK -->
+    <div class="tab-pane" id="tab-stock">
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-title">📦 პროდუქციის მზა მარაგები (Live Stock)</div>
+        </div>
+        <div class="stock-grid" id="stockCardsContainer">
+          <p style="color:var(--text-muted);">იტვირთება მარაგები...</p>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- Login Modal -->
+  <div id="authModal" style="display:none;">
+    <div class="auth-card">
+      <div style="font-size: 32px; margin-bottom: 8px;">🐾</div>
+      <h2 style="color: #fff; font-size: 20px; margin-bottom: 6px;">ხრამუნა • Control Center</h2>
+      <p style="color: var(--text-muted); font-size: 13px;">შეიყვანეთ ადმინ PIN კოდი სისტემაში შესასვლელად</p>
+      <input type="password" id="pinInput" class="auth-pin-input" placeholder="••••••••" maxlength="20" onkeydown="if(event.key==='Enter') submitPin()">
+      <button class="btn btn-primary" style="width:100%; justify-content:center; padding:12px;" onclick="submitPin()">ავტორიზაცია 🔓</button>
+      <p id="authError" style="color:#f87171; font-size:12px; margin-top:12px; display:none;"></p>
+    </div>
+  </div>
+
+  <script>
+    let authToken = localStorage.getItem('khramuna_admin_pin') || '';
+    let currentActiveConv = null;
+    let allOrdersData = [];
+    let allProfilesData = [];
+
+    // Check Auth on Init
+    window.addEventListener('DOMContentLoaded', () => {
+      if (!authToken) {
+        showAuthModal();
+      } else {
+        loadAllData();
+      }
+    });
+
+    function showAuthModal() {
+      document.getElementById('authModal').style.display = 'flex';
+      document.getElementById('pinInput').focus();
+    }
+
+    async function submitPin() {
+      const pin = document.getElementById('pinInput').value.trim();
+      const errBox = document.getElementById('authError');
+      if (!pin) return;
+
+      try {
+        const res = await fetch('/api/dashboard/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pin })
+        });
+        const data = await res.json();
+        if (data.success && data.token) {
+          authToken = data.token;
+          localStorage.setItem('khramuna_admin_pin', authToken);
+          document.getElementById('authModal').style.display = 'none';
+          loadAllData();
+        } else {
+          errBox.textContent = data.error || 'არასწორი PIN კოდი';
+          errBox.style.display = 'block';
+        }
+      } catch (e) {
+        errBox.textContent = 'სერვერთან კავშირი ვერ დამყარდა';
+        errBox.style.display = 'block';
+      }
+    }
+
+    function logoutAdmin() {
+      localStorage.removeItem('khramuna_admin_pin');
+      authToken = '';
+      showAuthModal();
+    }
+
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+      const activeBtn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.getAttribute('onclick')?.includes(tabId));
+      if (activeBtn) activeBtn.classList.add('active');
+      const pane = document.getElementById('tab-' + tabId);
+      if (pane) pane.classList.add('active');
+
+      if (tabId === 'chats') loadChats();
+      if (tabId === 'comments') loadComments();
+      if (tabId === 'orders') loadOrders();
+      if (tabId === 'profiles') loadProfiles();
+      if (tabId === 'stock') loadStock();
+    }
+
+    async function apiFetch(url, options = {}) {
+      const headers = options.headers || {};
+      headers['Authorization'] = 'Bearer ' + authToken;
+      const res = await fetch(url, { ...options, headers });
+      if (res.status === 401) {
+        logoutAdmin();
+        throw new Error('Unauthorized');
+      }
+      return res.json();
+    }
+
+    async function loadAllData() {
+      try {
+        await Promise.all([
+          loadStats(),
+          loadOrders(),
+          loadChatsSummary()
+        ]);
+      } catch (e) {
+        console.error('Data load error:', e);
+      }
+    }
+
+    // Load Overview Stats
+    async function loadStats() {
+      const data = await apiFetch('/api/dashboard/stats');
+      if (data.success && data.stats) {
+        const s = data.stats;
+        document.getElementById('kpiRevenue').textContent = s.totalRevenue.toFixed(2) + ' ₾';
+        document.getElementById('kpiOrders').textContent = s.totalOrders;
+        document.getElementById('kpiPaidOrders').textContent = `${s.paidOrdersCount} დადასტურებული`;
+        document.getElementById('kpiProfiles').textContent = s.profilesCount;
+      }
+    }
+
+    // Load Orders
+    async function loadOrders() {
+      const data = await apiFetch('/api/dashboard/orders');
+      if (data.success && data.orders) {
+        allOrdersData = data.orders;
+        renderOrdersTable(data.orders);
+        renderOverviewOrders(data.orders.slice(0, 5));
+      }
+    }
+
+    function renderOverviewOrders(orders) {
+      const tbody = document.getElementById('overviewOrdersTable');
+      if (!orders.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">შეკვეთები ჯერ არ არის</td></tr>';
+        return;
+      }
+      tbody.innerHTML = orders.map(o => `
+        <tr>
+          <td>${formatDate(o.createdAt)}</td>
+          <td><strong>${escapeHtml(o.customerName || 'უცნობი')}</strong></td>
+          <td>${escapeHtml(o.phone || '-')}</td>
+          <td>${escapeHtml(o.product || '-')}</td>
+          <td><strong>${o.price || 0}₾</strong></td>
+          <td><span class="status-badge ${getStatusClass(o.status)}">${formatStatus(o.status)}</span></td>
+        </tr>
+      `).join('');
+    }
+
+    function renderOrdersTable(orders) {
+      const tbody = document.getElementById('allOrdersTable');
+      if (!orders.length) {
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--text-muted);">შეკვეთები ჯერ არ არის</td></tr>';
+        return;
+      }
+      tbody.innerHTML = orders.map(o => `
+        <tr>
+          <td><span style="font-family:monospace; font-size:11px;">#${(o.id || '').substring(0,6)}</span><br><span style="font-size:11px; color:var(--text-muted);">${formatDate(o.createdAt)}</span></td>
+          <td><strong>${escapeHtml(o.customerName || 'უცნობი')}</strong></td>
+          <td><a href="tel:${o.phone}" style="color:var(--amber); font-weight:600; text-decoration:none;">${escapeHtml(o.phone || '-')}</a></td>
+          <td>${escapeHtml(o.city || '')} ${escapeHtml(o.address || '-')}</td>
+          <td><strong>${escapeHtml(o.product || '-')}</strong></td>
+          <td><strong style="color:var(--emerald);">${o.price || 0}₾</strong></td>
+          <td><span style="font-size:12px;">${escapeHtml(o.paymentMethod || 'გადარიცხვა')}</span></td>
+          <td>
+            <select onchange="changeOrderStatus('${o.id}', this.value)" style="background:var(--surface); color:#fff; border:1px solid var(--card-border); padding:6px 10px; border-radius:8px; font-size:12px;">
+              <option value="PENDING" ${o.status==='PENDING'?'selected':''}>⏳ მოლოდინში</option>
+              <option value="CONFIRMED_PAID" ${o.status==='CONFIRMED_PAID'?'selected':''}>✅ გადახდილია</option>
+              <option value="DELIVERED" ${o.status==='DELIVERED'?'selected':''}>🛵 ჩაბარებულია</option>
+              <option value="CANCELLED" ${o.status==='CANCELLED'?'selected':''}>❌ გაუქმებულია</option>
+            </select>
+          </td>
+        </tr>
+      `).join('');
+    }
+
+    async function changeOrderStatus(orderId, newStatus) {
+      try {
+        const res = await apiFetch(`/api/dashboard/orders/${orderId}/status`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus })
+        });
+        if (res.success) {
+          loadOrders();
+          loadStats();
+        }
+      } catch (e) {
+        alert('სტატუსის განახლება ვერ მოხერხდა');
+      }
+    }
+
+    // Load Live Chats
+    async function loadChatsSummary() {
+      const data = await apiFetch('/api/dashboard/chats');
+      if (data.success && data.chats) {
+        const attentionCount = data.chats.filter(c => c.needsHumanAttention).length;
+        document.getElementById('kpiAttention').textContent = attentionCount;
+        
+        const alertBadge = document.getElementById('chatsAlertCount');
+        if (attentionCount > 0) {
+          alertBadge.textContent = attentionCount;
+          alertBadge.style.display = 'inline-block';
+        } else {
+          alertBadge.style.display = 'none';
+        }
+
+        // Render top alert banner if human intervention is requested
+        const alertBox = document.getElementById('urgentAlertBox');
+        const urgentChats = data.chats.filter(c => c.needsHumanAttention);
+        if (urgentChats.length > 0) {
+          alertBox.innerHTML = `
+            <div class="alert-banner">
+              <div class="alert-text">
+                🚨 <strong>ყურადღება! ${urgentChats.length} კლიენტი ითხოვს ოპერატორის ჩართვას / დახმარებას:</strong><br>
+                ${urgentChats.map(u => `• <strong>${escapeHtml(u.userName)}</strong>: "${escapeHtml(u.snippet.substring(0, 50))}"`).join('<br>')}
+              </div>
+              <button class="btn btn-primary" onclick="switchTab('chats')">ჩათების გახსნა →</button>
+            </div>
+          `;
+        } else {
+          alertBox.innerHTML = '';
+        }
+      }
+    }
+
+    async function loadChats() {
+      const container = document.getElementById('chatsListContainer');
+      container.innerHTML = '<div style="padding:20px; text-align:center; color:var(--text-muted);">იტვირთება...</div>';
+
+      const data = await apiFetch('/api/dashboard/chats');
+      if (data.success && data.chats) {
+        container.innerHTML = data.chats.map(c => `
+          <div class="chat-item ${c.needsHumanAttention ? 'attention' : ''}" onclick="openChat('${c.convId}', '${c.userId}', '${escapeHtml(c.userName)}', ${c.isBotPaused})" id="chatItem-${c.convId}">
+            <div class="chat-item-header">
+              <div class="chat-user-name">${escapeHtml(c.userName)}</div>
+              <div class="chat-time">${formatDate(c.updatedTime, true)}</div>
+            </div>
+            <div class="chat-snippet">${escapeHtml(c.snippet || 'შეტყობინება')}</div>
+            <div style="margin-top:6px; display:flex; gap:6px;">
+              ${c.needsHumanAttention ? '<span class="status-badge" style="background:rgba(239,68,68,0.2); color:#fca5a5;">🚨 ოპერატორი</span>' : ''}
+              ${c.isBotPaused ? '<span class="status-badge" style="background:rgba(245,158,11,0.2); color:#fbbf24;">⏸️ ბოტი შეჩერებულია</span>' : '<span class="status-badge" style="background:rgba(16,185,129,0.1); color:#34d399;">🤖 AI აქტიურია</span>'}
+            </div>
+          </div>
+        `).join('');
+
+        if (data.chats.length > 0 && !currentActiveConv) {
+          const first = data.chats[0];
+          openChat(first.convId, first.userId, first.userName, first.isBotPaused);
+        }
+      }
+    }
+
+    async function openChat(convId, userId, userName, isBotPaused) {
+      currentActiveConv = { convId, userId, userName, isBotPaused };
+
+      document.querySelectorAll('.chat-item').forEach(el => el.classList.remove('active'));
+      const activeEl = document.getElementById(`chatItem-${convId}`);
+      if (activeEl) activeEl.classList.add('active');
+
+      document.getElementById('activeChatName').textContent = userName;
+      document.getElementById('activeChatStatus').textContent = `User ID: ${userId} • ${isBotPaused ? 'ბოტი შეჩერებულია (ადამიანის რეჟიმი)' : 'ბოტი აქტიურია'}`;
+      
+      const toggleBtn = document.getElementById('btnToggleBot');
+      toggleBtn.textContent = isBotPaused ? '▶️ ბოტის ჩართვა' : '⏸️ ბოტის შეჩერება (2 სთ)';
+      document.getElementById('chatControlBar').style.display = 'flex';
+
+      const msgContainer = document.getElementById('chatMessagesContainer');
+      msgContainer.innerHTML = '<div style="margin:auto; color:var(--text-muted);">იტვირთება შეტყობინებები...</div>';
+
+      try {
+        const data = await apiFetch(`/api/dashboard/chats/${convId}/messages`);
+        if (data.success && data.messages) {
+          msgContainer.innerHTML = data.messages.map(m => `
+            <div class="msg-bubble ${m.isPage ? 'bot' : 'user'}">
+              <strong>${m.fromName}</strong><br>
+              ${escapeHtml(m.text || '')}
+              <div class="msg-time">${formatDate(m.time, true)}</div>
+            </div>
+          `).join('');
+          msgContainer.scrollTop = msgContainer.scrollHeight;
+        }
+      } catch (e) {
+        msgContainer.innerHTML = '<div style="margin:auto; color:#f87171;">შეცდომა შეტყობინებების ჩატვირთვისას</div>';
+      }
+    }
+
+    async function toggleBotForActiveUser() {
+      if (!currentActiveConv) return;
+      const shouldPause = !currentActiveConv.isBotPaused;
+
+      const res = await apiFetch(`/api/dashboard/chats/${currentActiveConv.userId}/toggle-bot`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pause: shouldPause, durationMinutes: 120 })
+      });
+
+      if (res.success) {
+        currentActiveConv.isBotPaused = shouldPause;
+        openChat(currentActiveConv.convId, currentActiveConv.userId, currentActiveConv.userName, shouldPause);
+        loadChats();
+      }
+    }
+
+    async function sendAdminReply() {
+      if (!currentActiveConv) return;
+      const input = document.getElementById('adminReplyInput');
+      const text = input.value.trim();
+      if (!text) return;
+
+      input.disabled = true;
+      try {
+        const res = await apiFetch(`/api/dashboard/chats/${currentActiveConv.userId}/reply`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text })
+        });
+        if (res.success) {
+          input.value = '';
+          currentActiveConv.isBotPaused = true;
+          // Refresh message view
+          openChat(currentActiveConv.convId, currentActiveConv.userId, currentActiveConv.userName, true);
+        } else {
+          alert('შეტყობინება ვერ გაიგზავნა');
+        }
+      } catch (e) {
+        alert('შეცდომა გაგზავნისას');
+      } finally {
+        input.disabled = false;
+        input.focus();
+      }
+    }
+
+    // Load Comments
+    async function loadComments() {
+      const container = document.getElementById('commentsContainer');
+      container.innerHTML = '<p style="color:var(--text-muted); text-align:center;">იტვირთება...</p>';
+
+      const data = await apiFetch('/api/dashboard/comments');
+      if (data.success && data.comments) {
+        if (!data.comments.length) {
+          container.innerHTML = '<p style="color:var(--text-muted); text-align:center;">კომენტარები ვერ მოიძებნა</p>';
+          return;
+        }
+
+        container.innerHTML = data.comments.map(c => `
+          <div style="background:var(--surface); border:1px solid var(--card-border); border-radius:12px; padding:16px; margin-bottom:14px;">
+            <div style="display:flex; justify-content:space-between; margin-bottom:8px; align-items:center;">
+              <div>
+                <span class="status-badge" style="background:${c.platform==='Instagram'?'rgba(236,72,153,0.15)':'rgba(59,130,246,0.15)'}; color:${c.platform==='Instagram'?'#f472b6':'#60a5fa'}; font-weight:700;">${c.platform}</span>
+                <strong style="color:#fff; margin-left:8px;">${escapeHtml(c.commenterName)}</strong>
+                <span style="font-size:12px; color:var(--text-muted); margin-left:8px;">${formatDate(c.createdTime)}</span>
+              </div>
+              <span class="status-badge ${c.isReplied ? 'status-paid' : 'status-pending'}">${c.isReplied ? '✅ პასუხგაცემული' : '⏳ უპასუხო'}</span>
+            </div>
+            <div style="font-size:14px; color:#fff; margin:10px 0; background:rgba(0,0,0,0.2); padding:10px; border-radius:8px;">
+              "${escapeHtml(c.text)}"
+            </div>
+            ${c.replies?.length ? `
+              <div style="margin-left:20px; border-left:2px solid var(--amber); padding-left:12px; margin-top:8px;">
+                ${c.replies.map(r => `<div style="font-size:13px; color:var(--text-muted);"><strong>${escapeHtml(r.from)}:</strong> ${escapeHtml(r.text)}</div>`).join('')}
+              </div>
+            ` : ''}
+            <div style="margin-top:12px; display:flex; gap:10px;">
+              <input type="text" id="commentReply-${c.id}" class="chat-input" placeholder="უპასუხეთ საჯაროდ პირდაპირ დეშბორდიდან..." style="font-size:13px; padding:8px 12px;">
+              <button class="btn btn-primary" onclick="replyComment('${c.id}', '${c.platform === 'Instagram'}')">პასუხი</button>
+            </div>
+          </div>
+        `).join('');
+      }
+    }
+
+    async function replyComment(commentId, isInstagram) {
+      const input = document.getElementById(`commentReply-${commentId}`);
+      const text = input.value.trim();
+      if (!text) return;
+
+      try {
+        const res = await apiFetch(`/api/dashboard/comments/${commentId}/reply`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ text, isInstagram })
+        });
+        if (res.success) {
+          alert('პასუხი წარმატებით გამოქვეყნდა!');
+          loadComments();
+        }
+      } catch (e) {
+        alert('შეცდომა კომენტარზე პასუხისას');
+      }
+    }
+
+    // Load Profiles
+    async function loadProfiles() {
+      const data = await apiFetch('/api/dashboard/profiles');
+      if (data.success && data.profiles) {
+        allProfilesData = data.profiles;
+        renderProfilesTable(data.profiles);
+      }
+    }
+
+    function renderProfilesTable(profiles) {
+      const tbody = document.getElementById('profilesTable');
+      if (!profiles.length) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">პროფილები ჯერ არ არის</td></tr>';
+        return;
+      }
+      tbody.innerHTML = profiles.map(p => `
+        <tr>
+          <td><strong style="color:var(--amber); font-size:15px;">🐶 ${escapeHtml(p.petName)}</strong></td>
+          <td>${escapeHtml(p.petBreed)} (${escapeHtml(p.petType)})</td>
+          <td><span style="color:${p.allergies.includes('ქათამ')?'#f87171':'var(--emerald)'}; font-weight:600;">${escapeHtml(p.allergies)}</span></td>
+          <td>${p.phone ? `<a href="tel:${p.phone}" style="color:#fff; text-decoration:none;">📞 ${p.phone}</a>` : '-'}</td>
+          <td>${escapeHtml(p.address || '-')}</td>
+          <td><span class="status-badge status-delivered">${p.totalOrders} შეკვეთა</span></td>
+        </tr>
+      `).join('');
+    }
+
+    function filterProfiles() {
+      const q = document.getElementById('profileSearchInput').value.toLowerCase();
+      const filtered = allProfilesData.filter(p =>
+        (p.petName || '').toLowerCase().includes(q) ||
+        (p.petBreed || '').toLowerCase().includes(q) ||
+        (p.allergies || '').toLowerCase().includes(q)
+      );
+      renderProfilesTable(filtered);
+    }
+
+    // Load Stock
+    async function loadStock() {
+      const container = document.getElementById('stockCardsContainer');
+      const data = await apiFetch('/api/dashboard/stock');
+      if (data.success && data.stock) {
+        container.innerHTML = Object.entries(data.stock).map(([key, item]) => `
+          <div class="stock-card">
+            <div class="stock-info">
+              <h4>${escapeHtml(item.name)}</h4>
+              <p>${item.inStock ? '🟢 მარაგშია (' + (item.quantity || 5) + ' ცალი)' : '🔴 ამოწურულია (24 სთ დამზადება)'}</p>
+            </div>
+            <label class="switch">
+              <input type="checkbox" ${item.inStock ? 'checked' : ''} onchange="toggleStock('${key}', this.checked)">
+              <span class="slider"></span>
+            </label>
+          </div>
+        `).join('');
+      }
+    }
+
+    async function toggleStock(key, inStock) {
+      await apiFetch('/api/dashboard/stock', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key, inStock })
+      });
+      loadStock();
+    }
+
+    function downloadOrdersCsv() {
+      if (!allOrdersData.length) return alert('შეკვეთები არ არის');
+      let csv = 'ID,Date,Customer,Phone,City,Address,Product,Price,Payment,Status\n';
+      allOrdersData.forEach(o => {
+        csv += `"${o.id}","${o.createdAt}","${o.customerName||''}","${o.phone||''}","${o.city||''}","${o.address||''}","${o.product||''}","${o.price||0}","${o.paymentMethod||''}","${o.status||''}"\n`;
+      });
+      const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `khramuna_orders_${new Date().toISOString().substring(0,10)}.csv`;
+      a.click();
+    }
+
+    function formatDate(isoStr, timeOnly = false) {
+      if (!isoStr) return '-';
+      const d = new Date(isoStr);
+      if (timeOnly) return d.toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' });
+      return d.toLocaleDateString('ka-GE', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+    }
+
+    function formatStatus(status) {
+      if (status === 'CONFIRMED_PAID' || status === 'PAID') return '✅ გადახდილია';
+      if (status === 'DELIVERED') return '🛵 ჩაბარებულია';
+      if (status === 'CANCELLED') return '❌ გაუქმებულია';
+      return '⏳ მოლოდინში';
+    }
+
+    function getStatusClass(status) {
+      if (status === 'CONFIRMED_PAID' || status === 'PAID') return 'status-paid';
+      if (status === 'DELIVERED') return 'status-delivered';
+      return 'status-pending';
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+  </script>
+</body>
+</html>
