@@ -7,9 +7,55 @@ const GEMINI_BACKUP_URL = 'https://generativelanguage.googleapis.com/v1beta/mode
 const GEMINI_FALLBACK_URL = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent';
 
 /**
+ * Robustly strips introductory greetings, welcome formulas, and stray company names
+ * when a conversation is already active. Handles all punctuation (!, ?, ., ,), emojis,
+ * quotes, and pet/customer names.
+ */
+export function stripConversationalIntro(text) {
+  if (!text || typeof text !== 'string') return text;
+  let cleaned = text.trim();
+
+  // Strip welcome formulas first so words like "კეთილი" are not falsely captured as customer names
+  cleaned = cleaned.replace(/^(?:კეთილი\s+იყოს\s+თქვენი\s+მობრძანება|მოხარული\s+ვართ?(\s+რომ\s+დაგვიკავშირდით)?|მადლობა\s+(?:დაინტერესებისთვის|მომართვისთვის|დაკავშირებისთვის))[\s!,.:;—\-~🐾❤️🐶]*(?:(?:„|")?ხრამუნაში(?:“|")?|„ხრამუნასთან“|"ხრამუნასთან"|ხრამუნასგან)?[\s!,.:;—\-~🐾❤️🐶]*/i, '').trim();
+
+  // Strip greetings with optional names (excluding reserved welcome words)
+  const greetingRegex = /^(?:(?:გამარჯობა|მოგესალმებით|გაუმარჯოს|სალამი)[\s!,.:;—\-~🐾❤️🐶]*(?!(?:კეთილი|მოხარული|მადლობა))(?:[ა-ჰa-zA-Z0-9_-]+[\s!,.:;—\-~🐾❤️🐶]*)?)+/i;
+  cleaned = cleaned.replace(greetingRegex, '').trim();
+
+  // Run welcome formula once more if it immediately followed a greeting ("გამარჯობა! კეთილი იყოს თქვენი მობრძანება...")
+  cleaned = cleaned.replace(/^(?:კეთილი\s+იყოს\s+თქვენი\s+მობრძანება|მოხარული\s+ვართ?(\s+რომ\s+დაგვიკავშირდით)?|მადლობა\s+(?:დაინტერესებისთვის|მომართვისთვის|დაკავშირებისთვის))[\s!,.:;—\-~🐾❤️🐶]*(?:(?:„|")?ხრამუნაში(?:“|")?|„ხრამუნასთან“|"ხრამუნასთან"|ხრამუნასგან)?[\s!,.:;—\-~🐾❤️🐶]*/i, '').trim();
+
+  // Secondary greeting pass if repeated
+  cleaned = cleaned.replace(greetingRegex, '').trim();
+
+  // Stray company name residue at the very beginning
+  cleaned = cleaned.replace(/^(?:(?:„|")?ხრამუნაში(?:“|")?|„ხრამუნასთან“|"ხრამუნასთან"|ხრამუნასგან)[\s!,.:;—\-~🐾❤️🐶]*/i, '').trim();
+
+  // Leading leftover punctuation & emojis
+  cleaned = cleaned.replace(/^[\s!,.:;—\-~🐾❤️🐶]+/, '').trim();
+
+  return cleaned || text;
+}
+
+/**
  * System instruction defining the Khramuna Founder/Consultant persona and natural conversation.
  */
 function buildSystemPrompt(contextOptions = {}) {
+  const isContinued = !!contextOptions.isContinuedConversation;
+  const modeSnippet = isContinued ? `
+==================== ★ საუბრის რეჟიმი: მიმდინარე აქტიური დიალოგი (Strict Ongoing Dialogue) ★ ====================
+მომხმარებელთან საუბარი უკვე აქტიურია და მიმდინარეობს (ეს არ არის პირველი კონტაქტი!).
+1. კატეგორიულად, სასტიკად აკრძალულია:
+   - ხელახლა მისალმება („გამარჯობა“, „მოგესალმებით“, „სალამი“, „გაუმარჯოს“)!
+   - „კეთილი იყოს თქვენი მობრძანება“, „მოხარული ვარ რომ დაგვიკავშირდით“, „მადლობა მომართვისთვის“!
+   - საკუთარი თავის ან „ხრამუნას“ თავიდან წარდგენა („ჩვენ ვართ ხრამუნა...“, „ჩვენ ვამზადებთ...“)!
+   - ზოგადი კითხვები: „რით შემიძლია დაგეხმაროთ?“, „რით გავახაროთ თქვენი ცუგა?“.
+2. პირდაპირ და ცოცხლად გააგრძელე საუბარი! უპასუხე კლიენტის კონკრეტულ შეკითხვას ისე, როგორც მესენჯერში სწრაფი, მზრუნველი პასუხი.
+` : `
+==================== ★ საუბრის რეჟიმი: პირველი კონტაქტი (First-Contact Inbound) ★ ====================
+მომხმარებელი პირველად გვწერს. მიესალმე თბილად („გამარჯობა! 🐾“), მოიკითხე და დაუდასტურე მზადყოფნა დასახმარებლად.
+`;
+
   const currentStock = getStock();
   const stockLines = Object.values(currentStock).map(s => `• ${s.name}: ${s.inStock ? `${s.quantity ?? 5} ცალი მზა მარაგში` : 'დროებით ამოწურულია'} (დამზადებას/დეჰიდრაციას სჭირდება ${s.productionHours || 24} საათი)`).join('\n');
   const stockSnippet = `
@@ -53,7 +99,7 @@ ${profile.lastOrder ? `• წინა შეკვეთა: ${profile.lastOrd
 `;
   }
 
-  return `${stockSnippet}${profileSnippet}${orderSnippet}შენ ხარ „ხრამუნას“ (Khramuna) წამყვანი კონსულტანტი, ზოო-ნუტრიციოლოგი და მზრუნველი ექსპერტი.
+  return `${modeSnippet}${stockSnippet}${profileSnippet}${orderSnippet}შენ ხარ „ხრამუნას“ (Khramuna) წამყვანი კონსულტანტი, ზოო-ნუტრიციოლოგი და მზრუნველი ექსპერტი.
 „ხრამუნა“ არის საქართველოში დამზადებული 100% ნატურალური, დაბალ ტემპერატურაზე დეჰიდრირებული (გამოყვანილი) ხორცის პრემიუმ სასუსნავების ბრენდი ძაღლებისთვის და კატებისთვის.
 
 ==================== 1. მიმართვის ფორმა და ენობრივი სტანდარტი (მკაცრი Multilingual) ====================
@@ -634,18 +680,26 @@ export async function generateBotResponse(input, sessionHistory = [], contextOpt
     });
   }
 
+  const hasHistory = historyToUse.length > 0 || (sessionHistory && sessionHistory.length > 1);
+  const isContinuedConversation = contextOptions.isContinuedConversation !== undefined
+    ? !!contextOptions.isContinuedConversation
+    : hasHistory;
+
+  const mergedContextOptions = {
+    ...contextOptions,
+    isContinuedConversation,
+  };
+
   try {
-        const parsed = await callGemini(apiKey, contents, 1, isAudioInput, contextOptions);
+    const parsed = await callGemini(apiKey, contents, 1, isAudioInput, mergedContextOptions);
     if (parsed && parsed.replyText) {
-      // If we already greeted in sessionHistory, strip repetitive greeting at start of turn
+      // If conversation is already active or we already greeted earlier, strip any introductory greeting/pitch
       const alreadyGreeted = (sessionHistory || []).some(m =>
         (m.role === 'assistant' || m.role === 'model') &&
         /(?:გამარჯობა|მოგესალმებით|გაუმარჯოს|სალამი)/i.test(m.text || '')
       );
-      if (alreadyGreeted) {
-        parsed.replyText = parsed.replyText
-          .replace(/^(?:(?:გამარჯობა|მოგესალმებით|გაუმარჯოს|სალამი)[,\s]+(?:[ა-ჰa-zA-Z0-9_-]+[,\s!]+)?)+/i, '')
-          .trim();
+      if (isContinuedConversation || alreadyGreeted) {
+        parsed.replyText = stripConversationalIntro(parsed.replyText);
       }
       // Deterministic cleanup: strip awkward calques & nonsensical phrases
       // Retain natural conversational CTA and clean up awkward phonetics

@@ -765,7 +765,7 @@ app.post('/webhook', async (req, res) => {
             const goodbyeList = ['კარგად', 'კარგად იყავით', 'კარგად ბრძანდებოდეთ', 'ნახვამდის', 'დროებით', 'წარმატებები'];
             if (goodbyeList.includes(cleanText)) {
               const sessionHistory = session.history || [];
-              const lastAssistant = sessionHistory.slice().reverse().find(m => m.sender === 'assistant');
+              const lastAssistant = sessionHistory.slice().reverse().find(m => m.role === 'assistant' || m.sender === 'assistant');
               if (lastAssistant) {
                 const recentFarewells = ['გაახარეთ თქვენი ცუგა', 'მშვიდობიან და ბედნიერ დღეს', 'კარგი საღამო', 'კარგი დღე', 'დაველოდებით თქვენს შეტყობინებას', 'ნებისმიერ დროს მომწერეთ', 'მშვიდობით'];
                 if (recentFarewells.some(fw => lastAssistant.text.includes(fw))) {
@@ -785,7 +785,7 @@ app.post('/webhook', async (req, res) => {
             const isPureReaction = /^[\p{Emoji}\s🤣😂😁❤️👍🙏😊🐾🐶]+$/u.test(userText) || ['ჰაჰა', 'ხახა', 'haha', 'hahaha', 'lol', 'xaxa'].includes(cleanText);
             if (isPureReaction) {
               const sessionHistory = session.history || [];
-              const lastAssistant = sessionHistory.slice().reverse().find(m => m.sender === 'assistant');
+              const lastAssistant = sessionHistory.slice().reverse().find(m => m.role === 'assistant' || m.sender === 'assistant');
               if (lastAssistant) {
                 console.log(`[Messenger Fast-Path] Handled reaction "${userText}" from ${senderPsid} without catalog pitch.`);
                 let reactionReply = '❤️🐾';
@@ -841,9 +841,11 @@ app.post('/webhook', async (req, res) => {
             const activeOrder = getUserLatestOrder(senderPsid);
 
             console.log(`[Messenger] Calling Gemini AI for ${senderPsid} with CRM & Order context...`);
-            const aiResponse = await generateBotResponse(userText, session.history, {
+            const sessionHistory = session.history || [];
+            const aiResponse = await generateBotResponse(userText, sessionHistory, {
               profile,
               activeOrder,
+              isContinuedConversation: sessionHistory.length > 1,
             });
             console.log('[Messenger] Gemini reply:', aiResponse.replyText);
 
