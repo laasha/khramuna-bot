@@ -77,7 +77,7 @@ export async function checkNewComments() {
 
   // 1. Check Facebook Page Posts (correct endpoint: /posts)
   try {
-    const url = `https://graph.facebook.com/v19.0/${PAGE_ID}/posts?fields=id,message,comments{id,message,from,created_time,comments{id,from}}&limit=10&access_token=${token}`;
+    const url = `https://graph.facebook.com/v19.0/${PAGE_ID}/posts?fields=id,message,comments{id,message,from,created_time,comments{id,message,from,created_time}}&limit=10&access_token=${token}`;
     const res = await fetch(url);
     const json = await res.json();
 
@@ -101,25 +101,57 @@ export async function checkNewComments() {
             continue;
           }
 
-          // Check if Khramuna has already replied under this comment thread on Facebook
+          // Check top-level comment and its sub-comments
           const subComments = c.comments?.data || [];
-          const alreadyHasPageReply = subComments.some((sc) => sc.from?.id === PAGE_ID);
-          if (alreadyHasPageReply) {
+          const hasTopPageReply = subComments.some((sc) => sc.from?.id === PAGE_ID);
+
+          if (!hasTopPageReply && !isCommentReplied(c.id)) {
+            const rawName = c.from?.name || '';
+            console.log(`[Auto-Monitor] Found fresh Facebook comment from ${rawName || 'Customer'} (${c.id}): "${c.message || ''}"`);
+            handleCommentAction({
+              commentId: c.id,
+              commenterName: rawName,
+              commentText: c.message || '',
+              postText,
+              isInstagram: false,
+            }).catch((err) => console.error('[Auto-Monitor] Error handling FB comment:', err));
+          } else {
             markCommentReplied(c.id);
-            continue;
           }
 
-          const rawName = c.from?.name || '';
-          console.log(`[Auto-Monitor] Found fresh Facebook comment from ${rawName || 'Customer'} (${c.id}): "${c.message || ''}"`);
+          // Check for fresh user replies inside the sub-comment thread
+          for (const sc of subComments) {
+            if (!sc.id || sc.from?.id === PAGE_ID) continue;
+            if (isCommentReplied(sc.id)) continue;
 
-          // Trigger asynchronous processing with human delay
-          handleCommentAction({
-            commentId: c.id,
-            commenterName: rawName,
-            commentText: c.message || '',
-            postText,
-            isInstagram: false,
-          }).catch((err) => console.error('[Auto-Monitor] Error handling FB comment:', err));
+            const scTime = new Date(sc.created_time).getTime();
+            if (scTime < cutoffTime) {
+              markCommentReplied(sc.id);
+              continue;
+            }
+
+            // Find if there is any page reply created AFTER this sub-comment
+            const hasReplyAfterSc = subComments.some((other) => {
+              if (other.from?.id !== PAGE_ID) return false;
+              const otherTime = new Date(other.created_time).getTime();
+              return otherTime >= scTime;
+            });
+
+            if (hasReplyAfterSc) {
+              markCommentReplied(sc.id);
+              continue;
+            }
+
+            const scName = sc.from?.name || '';
+            console.log(`[Auto-Monitor] Found unreplied follow-up comment in thread from ${scName || 'Customer'} (${sc.id}): "${sc.message || ''}"`);
+            handleCommentAction({
+              commentId: sc.id,
+              commenterName: scName,
+              commentText: sc.message || '',
+              postText,
+              isInstagram: false,
+            }).catch((err) => console.error('[Auto-Monitor] Error handling sub-comment:', err));
+          }
         }
       }
     }

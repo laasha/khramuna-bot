@@ -104,3 +104,5 @@
 - [2026-10-14] Notifications & Phone Normalization: 1) Georgian mobile numbers frequently arrive with leading 0 (0599...) or +995; stripping leading 0 and 995 in both AI system prompt instructions and backend validation ensures zero false order rejections, 2) Human handoff and B2B wholesale keywords trigger instant Telegram priority alerts with deep links to Meta Business Suite Inbox while pausing bot to prevent bot interruptions.
 
 - [2026-10-14] Meta Permanent Token Architecture: Generated Never-Expiring Page Access Token (expires_at: 0) for Khramuna (928195650386088) using Meta App Secret fb_exchange_token flow. Updated .env and Vercel Production. Bot is permanently active.
+
+- [2026-10-15] Comment Threading & Vision Hardening: 1) Facebook Graph API /{post_id}/posts requires comments{...,comments{id,message,from,created_time}} to parse nested sub-replies; checking whether Page replied after the sub-comment ensures follow-up comments (e.g. breed clarifications like "ბიშონი") are never dropped, 2) Upgraded Gemini backup model to gemini-2.5-pro and Vision receipt OCR to gemini-2.5-flash to eliminate 503 Service Unavailable errors on gemini-3.7-flash.
