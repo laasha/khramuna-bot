@@ -388,6 +388,17 @@ ${profile.lastOrder ? `• წინა შეკვეთა: ${profile.lastOrd
 • იმოქმედე ეტაპობრივად, თბილად და ცოცხლად:
   ნაბიჯი 1 (მისამართი): „დიდი სიამოვნებით! 🐾 [თუ Full Pack-ია: Full Pack-ზე მიტანაც უფასოა 🎁] რომელ უბანში ან ქუჩაზე გამოვაგზავნოთ?“
 
+★ პირდაპირი ფასის მოთხოვნა (Direct Price Inquiry Closing):
+თუ მომხმარებელი ეკითხება კონკრეტული პროდუქტის ფასს („რა ღირს?“, „ფასი რა აქვს?“, „fasi rawvs“, „პუდრის ფასი?“):
+• კატეგორიულად აკრძალულია პასიური კითხვა: „რომელიმე სხვა სასუსნავის ფასიც ხომ არ გაინტერესებთ?“ ❌
+• აუცილებლად დაასრულე აქტიური Closing-ით: დაუსახელე ზუსტი ფასი და პირდაპირ შესთავაზე შეკვეთა:
+  „[პროდუქტი] ღირს [ფასი]₾ 🐾 გავამზადოთ ერთი ქილა/შეკვრა თქვენი ცუგასთვის? სად გამოგიგზავნოთ?“
+
+★ ქართული იუმორი & ბანტერი (Georgian Banter Guard):
+თუ მომხმარებელი ხუმრობს („სიტყვა არ შემარჩინეთ“, „ბიჭო სიტყვა“, „ჩუმად ვარ“, „🤣“, „ჰაჰა“):
+• კატეგორიულად აკრძალულია პროდუქტის კატალოგის თავიდან დაწყება!
+• უპასუხე თბილი იუმორით და მეგობრულად: „ხო, მართალი ხართ 😂 ჩუმად ვარ! მშვენიერ დღეს გისურვებთ ❤️🐾“.
+
 1. ფაზა A: შეკვეთამდე (გაცნობა, კონსულტაცია, პროდუქტის შერჩევა & აქტიური დახურვა):
    - კლიენტი იცნობს მენიუს, ეკითხება რჩევას, აზუსტებს ფასებს.
    - ბოტის როლი: ექსპერტი და მზრუნველი მასპინძელი. არჩევს სასუსნავს, ხსნის სარგებელს მოკლედ (1-2 წინადადებით).
@@ -453,7 +464,34 @@ function safeParseJson(text) {
         return JSON.parse(match[0]);
       } catch (err) {}
     }
-    // If LLM returned raw conversational text instead of JSON, treat it directly as replyText!
+
+    // Robust Regex extraction if JSON.parse failed due to unescaped newlines/quotes
+    const replyMatch = clean.match(/"replyText"\s*:\s*"([\s\S]*?)(?:"\s*,\s*"(?:isOrderReady|isEscalated|order|customerProfileUpdates)"|(?<!\\)"\s*\}|$)/);
+    if (replyMatch && replyMatch[1]) {
+      let extracted = replyMatch[1]
+        .replace(/\\n/g, '\n')
+        .replace(/\\"/g, '"')
+        .replace(/\\\\/g, '\\')
+        .trim();
+      return {
+        replyText: extracted,
+        isOrderReady: false,
+        isEscalated: clean.includes('"isEscalated": true') || clean.includes('"isEscalated":true'),
+        order: null,
+      };
+    }
+
+    // Safety fallback: NEVER leak raw JSON strings starting with { to customer
+    if (clean.startsWith('{') || clean.includes('"replyText"') || clean.includes('"isOrderReady"')) {
+      return {
+        replyText: 'გასაგებია! 🐾 გთხოვთ მოგვწეროთ, რაიმე დამატებითი კითხვა ხომ არ გაქვთ თქვენი ცუგასთვის?',
+        isOrderReady: false,
+        isEscalated: false,
+        order: null,
+      };
+    }
+
+    // If LLM returned raw conversational text instead of JSON, treat it directly as replyText
     return {
       replyText: clean,
       isOrderReady: false,
@@ -571,8 +609,18 @@ export async function generateBotResponse(input, sessionHistory = [], contextOpt
   }
 
   try {
-    const parsed = await callGemini(apiKey, contents, 1, isAudioInput, contextOptions);
+        const parsed = await callGemini(apiKey, contents, 1, isAudioInput, contextOptions);
     if (parsed && parsed.replyText) {
+      // If we already greeted in sessionHistory, strip repetitive greeting at start of turn
+      const alreadyGreeted = (sessionHistory || []).some(m =>
+        (m.role === 'assistant' || m.role === 'model') &&
+        /(?:გამარჯობა|მოგესალმებით|გაუმარჯოს|სალამი)/i.test(m.text || '')
+      );
+      if (alreadyGreeted) {
+        parsed.replyText = parsed.replyText
+          .replace(/^(?:(?:გამარჯობა|მოგესალმებით|გაუმარჯოს|სალამი)[,\s]+(?:[ა-ჰa-zA-Z0-9_-]+[,\s!]+)?)+/i, '')
+          .trim();
+      }
       // Deterministic cleanup: strip awkward calques & nonsensical phrases
       // Retain natural conversational CTA and clean up awkward phonetics
       parsed.replyText = parsed.replyText
@@ -609,6 +657,10 @@ export async function generateBotResponse(input, sessionHistory = [], contextOpt
         .replace(/(?<![ა-ჰ])შენ\s+გადავამოწმებ(?![ა-ჰ])/gi, 'გადავამოწმებ')
         .replace(/(?<![ა-ჰ])ფერმერულ(ი|ის|ად|მა|ით)?(?![ა-ჰ])/gi, 'ნატურალურ$1')
         .replace(/(?<![ა-ჰ])(ბატონო|ქალბატონო|მეგობარო|ძვირფასო|პატივცემულო)(?![ა-ჰ])[,!\s]*/gi, '')
+        .replace(/თბილისი\s+სიტყვებისთვის/gi, 'თბილი სიტყვებისთვის')
+        .replace(/ძირითადი\s+საკმლის/gi, 'ძირითადი საკვების')
+        .replace(/საკმელზე/gi, 'საკვებზე')
+        .replace(/საკმლის/gi, 'საკვების')
         .trim();
     }
     return parsed;

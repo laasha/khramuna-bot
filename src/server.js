@@ -571,9 +571,10 @@ app.post('/webhook', async (req, res) => {
                                         lastMsgs.includes('ბათუმ') || 
                                         lastMsgs.includes('რეგიონ') ||
                                         lastMsgs.includes('გაიხარ');
+                const hasPriorHistory = (session.history || []).length > 2;
                 const stickerReply = isPoliteClosing 
                   ? 'გაიხარეთ! ❤️🐾 თუ რამე დაგჭირდეთ თქვენი ცუგასთვის, ნებისმიერ დროს მოგვწერეთ ✨'
-                  : 'გამარჯობა! 🐾❤️ რით შეგვიძლია დაგეხმაროთ, ან რომელი ნატურალური სასუსნავი გაინტერესებთ თქვენი ცუგასთვის? ✨';
+                  : (hasPriorHistory ? '🐾❤️' : 'გამარჯობა! 🐾❤️ რით შეგვიძლია დაგეხმაროთ, ან რომელი ნატურალური სასუსნავი გაინტერესებთ თქვენი ცუგასთვის? ✨');
                 await sendMessengerMessage(senderPsid, stickerReply);
                 updateSession(senderPsid, 'assistant', stickerReply);
                 continue;
@@ -588,7 +589,17 @@ app.post('/webhook', async (req, res) => {
               updateSession(senderPsid, 'user', '[ფოტო]');
               try {
                 const aiResponse = await generateBotResponse(photoPrompt, session.history);
-                await sendMessengerMessage(senderPsid, aiResponse.replyText);
+                let finalText = aiResponse.replyText || '';
+            if (finalText.trim().startsWith('{') && finalText.includes('"replyText"')) {
+              console.warn('[Messenger Guard] Intercepted raw JSON in replyText, extracting clean text...');
+              const m = finalText.match(/"replyText"\s*:\s*"([\s\S]*?)(?:"\s*,\s*"|(?<!\\)"\s*\}|$)/);
+              if (m && m[1]) {
+                finalText = m[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').trim();
+              } else {
+                finalText = 'დიდი მადლობა! ❤️ დეტალები ჩანიშნულია. დამატებით რაიმე ხომ არ გაინტერესებთ? 🐾';
+              }
+            }
+            await sendMessengerMessage(senderPsid, finalText);
                 updateSession(senderPsid, 'assistant', aiResponse.replyText);
               } catch (aiPhotoErr) {
                 console.error('[Messenger Photo AI Error]:', aiPhotoErr.message);
@@ -762,7 +773,7 @@ app.post('/webhook', async (req, res) => {
             }
 
             // Photo / Visual requests fast-path (Only when customer specifically requests a photo/image!)
-            const isExplicitPhotoRequest = (cleanText.includes('ფოტო') || cleanText.includes('სურათ') || cleanText.includes('როგორ გამოიყურება') || cleanText.includes('მაჩვენეთ როგორ')) &&
+            const isExplicitPhotoRequest = (cleanText.includes('ფოტო') || cleanText.includes('სურათ') || cleanText.includes('როგორ გამოიყურება') || cleanText.includes('მაჩვენ') || cleanText.includes('ჩამიგდ') || cleanText.includes('რომ ჩამიგდოთ')) &&
               !cleanText.includes('შეკვეთ') && !cleanText.includes('მინდა შეკვეთა') && !cleanText.includes('ყიდვა');
             if (isExplicitPhotoRequest) {
               const histLast = (session.history || []).slice(-4).map(m => m.text).join(' ');
@@ -871,9 +882,19 @@ app.post('/webhook', async (req, res) => {
             await new Promise((resolve) => setTimeout(resolve, typingDelay));
 
             console.log('[Messenger] Sending natural reply back to Facebook...');
+            let finalText = aiResponse.replyText || '';
+            if (finalText.trim().startsWith('{') && finalText.includes('"replyText"')) {
+              console.warn('[Messenger Guard] Intercepted raw JSON in replyText, extracting clean text...');
+              const m = finalText.match(/"replyText"\s*:\s*"([\s\S]*?)(?:"\s*,\s*"|(?<!\\)"\s*\}|$)/);
+              if (m && m[1]) {
+                finalText = m[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').trim();
+              } else {
+                finalText = 'დიდი მადლობა! ❤️ დეტალები ჩანიშნულია. დამატებით რაიმე ხომ არ გაინტერესებთ? 🐾';
+              }
+            }
             // Send pure, natural human message without robotic quick-reply buttons
-            await sendMessengerMessage(senderPsid, aiResponse.replyText);
-            updateSession(senderPsid, 'assistant', aiResponse.replyText);
+            await sendMessengerMessage(senderPsid, finalText);
+            updateSession(senderPsid, 'assistant', finalText);
           }
         }
 
