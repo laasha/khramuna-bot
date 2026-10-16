@@ -49,19 +49,28 @@ function enqueueUserMessage(senderPsid, text) {
 
 import 'dotenv/config';
 
-function getContextualQuickReplies(text) {
+export function getContextualQuickReplies(text) {
   if (!text || typeof text !== 'string') return null;
   const clean = text.toLowerCase();
 
-  // 1. Product Selection moment: when bot asks which product to choose or lists them
+  // 1. Product Selection & Upsell Decision moment:
   if (
     clean.includes('რომელ სასუსნავ') ||
     clean.includes('რომელს შევურჩევ') ||
     clean.includes('რომელი შევურჩიოთ') ||
     clean.includes('რომელი მოგეწონათ') ||
     clean.includes('რომელიმე გაგიმზადოთ') ||
+    clean.includes('სრულ ნაკრებს გავამზადებთ') ||
+    clean.includes('როგორ გირჩევნიათ') ||
     (clean.includes('თათებ') && clean.includes('ღრუბელ') && (clean.includes('?') || clean.includes('რომელ')))
   ) {
+    if (clean.includes('სრულ ნაკრებ') || (clean.includes('full pack') && clean.includes('როგორ გირჩევნიათ'))) {
+      return [
+        { title: '🎁 Full Pack (49.50₾)', payload: 'SELECT_FULL_PACK' },
+        { title: '🦴 1 შეკვრა (23₾)', payload: 'SELECT_SINGLE' },
+        { title: '☁️ +ღრუბელი (15₾)', payload: 'ADD_LUNG' }
+      ];
+    }
     return [
       { title: '🎁 Full Pack (49.50₾)', payload: 'SELECT_FULL_PACK' },
       { title: '🦴 თათები (18₾)', payload: 'SELECT_PAWS' },
@@ -102,7 +111,7 @@ function getContextualQuickReplies(text) {
   return null;
 }
 
-function sanitizeOutgoingText(text) {
+export function sanitizeOutgoingText(text) {
   if (!text || typeof text !== 'string') return text;
   // Deterministic Safety Shield against profanity, insult echoes, and coarse slang
   const toxicPattern = /(?:ჩათლაშკ|ჩათლახ|ბოზო|ბოზი|ნაბიჭვ|დებილ|იდიოტ)/i;
@@ -685,22 +694,57 @@ app.post('/webhook', async (req, res) => {
               const alertDetails = '👤 კლიენტი: ' + senderPsid + '\n🖼️ [ფოტოს ბმული](' + photoUrl + ')\nმომხმარებელმა გამოაგზავნა ფოტო (შესაძლოა ცუგას სურათი).';
               await notifyTelegramAlert('📸 *ახალი ფოტო ჩათში (არ არის ქვითარი)*', alertDetails);
 
-              const photoPrompt = '[კლიენტმა ჩატში გამოაგზავნა ფოტო, სავარაუდოდ თავისი ძაღლის სურათი. თბილად შეუქე ოთხფეხა და ბუნებრივად განაგრძე წინა დიალოგის თემა, თავიდან ნუ გააცნობ თავს ან კატალოგს]';
+              const photoPrompt = `[მომხმარებელმა ჩატში გამოაგზავნა ფოტო.
+თუ ფოტოზე ძაღლი/ლეკვი ან შინაური ცხოველია:
+1. როგორც კინოლოგმა და მზრუნველმა სპეციალისტმა, ზუსტად ამოიცანი ჯიში (ჯიში/შერეული), სავარაუდო ასაკი (ლეკვი თუ ზრდასრული) და ზომა.
+2. თბილად და გულწრფელად შეუქე ოთხფეხა (დაასახელე ჯიში კონკრეტულად, მაგ: „რა საოცარი ფრანგული ბულდოგია! ❤️“).
+3. მისი ჯიშისა და ასაკის გათვალისწინებით ურჩიე იდეალური ხრამუნას სნექი (ლეკვს ან პატარა ჯიშს - რბილი ღრუბელი ან პუდრა; კბილების გამოცვლის/ღეჭვის მოყვარულს - დრაკონის თათები; მადის მოსაგვარებლად - ჯადოსნური პუდრა).
+4. customerProfileUpdates-ში დააბრუნე აღმოჩენილი ჯიში და ასაკი (მაგ: {"petBreed": "ფრანგული ბულდოგი", "petAge": "ლეკვი"}).
+თუ ფოტოზე ძაღლი არ არის (სხვა რამეა, მაგ. კბილები, პროდუქტი, ან მემი), უპასუხე კონტექსტურად.]`;
               updateSession(senderPsid, 'user', '[ფოტო]');
+              await sendSenderAction(senderPsid, 'typing_on').catch(() => {});
+
               try {
-                const aiResponse = await generateBotResponse(photoPrompt, session.history);
+                let imagePayload = null;
+                try {
+                  const photoRes = await fetch(photoUrl);
+                  if (photoRes.ok) {
+                    const arrayBuf = await photoRes.arrayBuffer();
+                    const base64Data = Buffer.from(arrayBuf).toString('base64');
+                    const rawType = photoRes.headers.get('content-type') || 'image/jpeg';
+                    const mimeType = rawType.split(';')[0].trim() || 'image/jpeg';
+                    imagePayload = { mimeType, data: base64Data };
+                  }
+                } catch (fetchImgErr) {
+                  console.warn('[Messenger Photo] Could not fetch image buffer, falling back to text prompt:', fetchImgErr.message);
+                }
+
+                const aiInput = imagePayload ? { text: photoPrompt, image: imagePayload } : photoPrompt;
+                const aiResponse = await generateBotResponse(aiInput, session.history, { isContinuedConversation: true });
                 let finalText = aiResponse.replyText || '';
-            if (finalText.trim().startsWith('{') && finalText.includes('"replyText"')) {
-              console.warn('[Messenger Guard] Intercepted raw JSON in replyText, extracting clean text...');
-              const m = finalText.match(/"replyText"\s*:\s*"([\s\S]*?)(?:"\s*,\s*"|(?<!\\)"\s*\}|$)/);
-              if (m && m[1]) {
-                finalText = m[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').trim();
-              } else {
-                finalText = 'დიდი მადლობა! ❤️ დეტალები ჩანიშნულია. დამატებით რაიმე ხომ არ გაინტერესებთ? 🐾';
-              }
-            }
-            await sendMessengerMessage(senderPsid, finalText);
-                updateSession(senderPsid, 'assistant', aiResponse.replyText);
+                if (finalText.trim().startsWith('{') && finalText.includes('"replyText"')) {
+                  console.warn('[Messenger Guard] Intercepted raw JSON in replyText, extracting clean text...');
+                  const m = finalText.match(/"replyText"\s*:\s*"([\s\S]*?)(?:"\s*,\s*"|(?<!\\)"\s*\}|$)/);
+                  if (m && m[1]) {
+                    finalText = m[1].replace(/\\n/g, '\n').replace(/\\"/g, '"').trim();
+                  } else {
+                    finalText = 'რა საყვარელი ცუგაა! ❤️ დეტალები ჩანიშნულია. რაიმე კითხვა ხომ არ გაქვთ ჩვენს სნექებზე? 🐾';
+                  }
+                }
+
+                if (aiResponse.customerProfileUpdates) {
+                  updateCustomerProfile(senderPsid, aiResponse.customerProfileUpdates);
+                }
+
+                const sanitizedText = sanitizeOutgoingText(finalText);
+                const contextualPills = getContextualQuickReplies(sanitizedText);
+                if (contextualPills && contextualPills.length > 0) {
+                  console.log(`[Messenger Photo] Sending ${contextualPills.length} contextual quick-reply pills...`);
+                  await sendQuickReplies(senderPsid, sanitizedText, contextualPills);
+                } else {
+                  await sendMessengerMessage(senderPsid, sanitizedText);
+                }
+                updateSession(senderPsid, 'assistant', sanitizedText);
               } catch (aiPhotoErr) {
                 console.error('[Messenger Photo AI Error]:', aiPhotoErr.message);
                 const fallbackPhotoReply = 'რა საყვარელია! ❤️🐾 რით შეგვიძლია გავახაროთ თქვენი ოთხფეხა მეგობარი? ✨';

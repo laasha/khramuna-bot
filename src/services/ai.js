@@ -244,6 +244,24 @@ ${profile.lastOrder ? `• წინა შეკვეთა: ${profile.lastOrd
 7. დამშვიდობების პინგ-პონგის აკრძალვა (Farewell Ping-Pong Guard):
    • როდესაც დიალოგი უკვე დასრულდა, მადლობა უკვე გადახდილია და კლიენტი წერს „კარგად ბრძანდებოდეთ“, „ნახვამდის“, „დროებით“:
    • ნუ გააგრძელებ გაუთავებელ პასუხებს! დაწერე მაქსიმუმ 2-3 სიტყვიანი თბილი დამშვიდობება: „მშვიდობით! 🐾❤️“ და არანაირი კითხვა!
+8. კინოლოგიური ხედვა და ფოტოს ანალიზი (Gemini Vision Kinologist):
+   • როდესაც მომხმარებელი აგზავნის თავისი ცუგას/ფისოს ფოტოს:
+     1. რეალური კინოლოგიური შეფასება:
+        - დააკვირდი ფოტოს: ამოიცანი ჯიში (ჯიშიანია თუ ულამაზესი მეტისი/შერეული), სავარაუდო ასაკობრივი ჯგუფი (პაწაწინა ლეკვი, მოზარდი თუ ზრდასრული) და ზომა (პატარა, საშუალო, დიდი).
+        - არასოდეს გამოიყენო შაბლონური რობოტული ფრაზა („ფოტო მიღებულია“)!
+        - გულწრფელად და თბილად შეუქე ოთხფეხა მისი კონკრეტული მახასიათებლით:
+          მაგალითად: „რა საოცარი ფრანგული ბულდოგია! ❤️ რა ჭკვიანი თვალები აქვს...“ ან „რა საყვარელი გოლდენია! ნამდვილი მზე 🐾“.
+     2. ასაკისა და ჯიშის მიხედვით ზუსტი რეკომენდაცია:
+        - თუ ლეკვია (4 თვემდე) ან პატარა დელიკატური ჯიში (იორკი, შპიცი, მალტეზე):
+          ურჩიე „ღრუბელი“ (საქონლის ფილტვი, 15₾) — ძალიან რბილია, ჰაეროვანია და რძის კბილებისთვისაც სრულიად უსაფრთხოა, ან „ჯადოსნური პუდრა“ (12₾) მადის გასახსნელად.
+        - თუ მოზარდია (4-8 თვის, კბილების გამოცვლის პერიოდში) ან აქტიური მღრღნელია (ლაბრადორი, ჰასკი, ბულდოგი, გერმანული ნაგაზი):
+          ურჩიე „დრაკონის თათები“ (ქათამი, 18₾) — ხანგრძლივი ღეჭვისთვის, კბილებიდან ნადების მოსაშორებლად და ხრტილების/სახსრების გასაძლიერებლად.
+        - თუ ენერგიულია / წვრთნაშია / პრეტენზიული მჭამელია:
+          ურჩიე „სუპერ-კუბები“ (ღვიძლი, 17₾) ან „ჯადოსნური პუდრა“ (12₾).
+     3. მომხმარებლის პროფილის განახლება (customerProfileUpdates):
+        - JSON-ის customerProfileUpdates ველში აუცილებლად დააბრუნე აღმოჩენილი ჯიში და ასაკი:
+          {"petBreed": "ამოცნობილი ჯიში", "petAge": "ლეკვი / ზრდასრული"}.
+
 
 ==================== 4. ასორტიმენტი, ტექსტურა და სიახლის გარანტია ====================
 ★ მომხმარებლის ენის იდენტურად ასახვა (Mirroring Rule & პროდუქტების სახელები):
@@ -400,10 +418,21 @@ ${profile.lastOrder ? `• წინა შეკვეთა: ${profile.lastOrd
 • დაამშვიდე და დაუდასტურე:
   „რა თქმა უნდა! 🐾 თქვენს სასურველ დროს [მაგ. 15:00-მდე] აუცილებლად ჩავუნიშნავთ კურიერს კომენტარში და მოსვლამდე 20-30 წუთით ადრე აუცილებლად დაგირეკავთ 📞“
 • ეს მოთხოვნა აუცილებლად შეიტანე შეკვეთის deliveryNotes ველში!
-★ ჭკვიანი UPSELL და უფასო მიტანის შეთავაზება:
+★ ჭკვიანი UPSELL და საკურიეროს ღირებულების კონვერსია (Intelligent AOV & Math Framing):
 - თბილისში მიწოდება: 5₾ საკურიერო (24-48 საათში). 45₾-დან ან Full Pack-ზე მიწოდება სრულიად უფასოა!
-- UPSELL წესი: როცა კლიენტი ირჩევს 1 ან 2 პროდუქტს და თანხა 45₾-ზე ნაკლებია, მეგობრულად შესთავაზე:
-  „სიამოვნებით! 45₾-დან თბილისში მიტანა უფასო გვაქვს — თუ გნებავთ, დაამატეთ კიდევ ერთი სასუსნავი (მაგ. მსუბუქი ღრუბელი ან კუბები) და კურიერის 5₾ აღარ დაგემატებათ 🐾“
+- UPSELL & Math Conversion წესი: როცა კლიენტი ირჩევს 1 ან 2 პროდუქტს და თანხა 45₾-ზე ნაკლებია:
+  • არასოდეს დააფიქსირო საკურიერო 5₾ როგორც მშრალი „ჯარიმა“ ან დაბრკოლება!
+  • გამოიყენე მათემატიკური დანაზოგის ცოცხალი შეთავაზება (Full Pack ან მე-2 პროდუქტის დამატება):
+    1. დააფიქსირე არჩეული პროდუქტი გამჭვირვალედ:
+       „თათები 18₾-ია. თბილისში კურიერის მიტანა ემატება 5₾ (სულ 23₾).“
+    2. მაშინვე შესთავაზე ჭკვიანი ეკონომიური ალტერნატივა:
+       „თუმცა, 45₾-დან მიტანა სრულიად უფასოა! ❤️
+       თუ გნებავთ, კურიერის 5₾-ის გადახდას გირჩევნიათ ჩვენი Full Pack (სრული ოთხეული) აიღოთ:
+       ოთხივე შეკვრა ცალ-ცალკე 62₾ გამოდის, მაგრამ ნაკრებში 49.50₾-ში გაგატანთ, მიტანის 5₾-ს გაჩუქებთ და მთელი თვის მარაგი გექნებათ (ფაქტობრივად 17.50₾-ს ზოგავთ!).
+       ან შეგიძლიათ უბრალოდ მეორე სასუსნავი (მაგ. ჰაეროვანი ღრუბელი 15₾) დაამატოთ.
+       როგორ გირჩევნიათ — 1 შეკვრით დავიწყოთ თუ სრულ ნაკრებს გავამზადებთ?“
+  • თუ კლიენტი მაინც ირჩევს ერთ შეკვრას:
+    „არანაირი პრობლემა არ არის! ❤️ 1 შეკვრით დავიწყოთ და თქვენი ცუგა თვითონ გვეტყვის თავის აზრს 🐾“ — და შეუფერხებლად გადადი მისამართისა და ტელეფონის ჩანიშვნაზე.
 
 ★ თბილისში მიწოდება: 5₾ (45₾-დან უფასო). სტანდარტულად 24-48 საათში კურიერით პირდაპირ კარამდე.
 - საკურიერო სამუშაო საათები: კურიერი მოგართმევთ დღის განმავლობაში (12:00-დან 19:00-მდე) და მოსვლამდე 20-30 წუთით ადრე აუცილებლად დაგირეკავთ ტელეფონზე 📞.
@@ -648,9 +677,9 @@ function safeParseJson(text) {
   }
 }
 
-async function callGemini(apiKey, contents, attempt = 1, isAudio = false, contextOptions = {}) {
+async function callGemini(apiKey, contents, attempt = 1, isMultimodal = false, contextOptions = {}) {
   let targetUrl = GEMINI_TEXT_URL;
-  if (isAudio) {
+  if (isMultimodal) {
     targetUrl = GEMINI_AUDIO_URL;
   } else if (attempt === 2) {
     targetUrl = GEMINI_BACKUP_URL;
@@ -681,7 +710,7 @@ async function callGemini(apiKey, contents, attempt = 1, isAudio = false, contex
     if ((res.status === 429 || res.status === 503 || res.status === 404) && attempt < 3) {
       console.log(`[AI] Retrying with model attempt ${attempt + 1} after 800ms...`);
       await new Promise((resolve) => setTimeout(resolve, 800));
-      return callGemini(apiKey, contents, attempt + 1, isAudio, contextOptions);
+      return callGemini(apiKey, contents, attempt + 1, isMultimodal, contextOptions);
     }
 
     throw new Error(`Gemini error: ${res.status}`);
@@ -703,6 +732,7 @@ export async function generateBotResponse(input, sessionHistory = [], contextOpt
   const apiKey = process.env.GEMINI_API_KEY;
 
   const isAudioInput = typeof input === 'object' && input !== null && !!input.audio;
+  const isImageInput = typeof input === 'object' && input !== null && !!input.image;
   const userMessage = typeof input === 'string' ? input.trim() : (input.text || '').trim();
 
   if (!apiKey) {
@@ -748,6 +778,21 @@ export async function generateBotResponse(input, sessionHistory = [], contextOpt
         },
       ],
     });
+  } else if (isImageInput) {
+    contents.push({
+      role: 'user',
+      parts: [
+        {
+          inlineData: {
+            mimeType: input.image.mimeType,
+            data: input.image.data,
+          },
+        },
+        {
+          text: userMessage || '[მომხმარებელმა გამოაგზავნა ფოტო (ძაღლის/სნექის). შეაფასე როგორც პროფესიონალმა კინოლოგმა და ხრამუნას მზრუნველმა კონსულტანტმა. შეასრულე ყველა ინსტრუქცია და დააბრუნე სავალდებულო JSON.]',
+        },
+      ],
+    });
   } else {
     contents.push({
       role: 'user',
@@ -766,7 +811,8 @@ export async function generateBotResponse(input, sessionHistory = [], contextOpt
   };
 
   try {
-    const parsed = await callGemini(apiKey, contents, 1, isAudioInput, mergedContextOptions);
+    const isMultimodal = isAudioInput || isImageInput;
+    const parsed = await callGemini(apiKey, contents, 1, isMultimodal, mergedContextOptions);
     if (parsed && parsed.replyText) {
       // If conversation is already active or we already greeted earlier, strip any introductory greeting/pitch
       const alreadyGreeted = (sessionHistory || []).some(m =>
