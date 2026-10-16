@@ -126,3 +126,17 @@
 - [2026-10-16] Confirmed-Delivery Care Follow-Up: 1) Created src/services/followUp.js with strict zero-embarrassment guards (executes ONLY on orders explicitly marked status === 'DELIVERED', requires deliveredAt timestamp, 24h-96h elapsed time, deduplication, and !isBotPausedForUser); 2) Added 1-click '💌 მოკითხვის გაგზავნა' button in admin dashboard order modal; 3) Integrated automated follow-up check into 10-minute cron endpoint; 4) Injected post-delivery delight/advice handling rules into ai.js.
 - [2026-10-17] Unit Economics & Tone Detox: 1) Strict Tbilisi-Only Policy enforced in ai.js and safeParseJson (enforceTbilisiDeliveryGuard blocks isOrderReady and sets order to null on regional cities like Samtredia/Kutaisi/Batumi to eliminate negative unit-economic postage fees of 15-20 GEL); 2) Anti-Salesy Tone Detox: eliminated aggressive bazar upselling ("17.50₾-ს ზოგავთ!", pushing Full Pack when customer requests 1 item), re-anchored Few-Shot Dialogue 3 to direct, restrained artisan checkout with zero haggle, and reserved bundle offers strictly for explicit advice requests or multi-item selections.
 - [2026-10-17] Deep Precision & Parallel System Hardening: 1) JavaScript Regex Unicode Boundary: discovered \b fails on Georgian characters (ASCII-only); replaced with Unicode property lookarounds (?<!\p{L}) and (?!\p{L}) with /iu flag to capture Georgian locative inflection ("ბათუმში", "ქუთაისში", "რუსთავში") and Latin transliterations ("Batumshi", "Kutaisshi"); 2) Protected Tbilisi streets named after regions ("ქუთაისის ქუჩა", "ბათუმის ქუჩა", "რუსთაველის გამზირი", "გორგასლის ქუჩა") from false positive rejections; 3) Removed lingering '📦 რეგიონი (ფოსტა)' quick reply button in server.js to eliminate regional post invitations in Messenger; 4) Injected strict Tbilisi-only delivery rules into buildFeedAuthorityPrompt for Facebook comment radar.
+
+---
+
+## 13. გრამატიკული სისუფთავე და ცოცხალი ადამიანური ტონი (Grammar Purity & Human Voice)
+* **აკრძალული კორპორაციული/ქოლ-ცენტრის კლიშეები:**
+  - ❌ „ჩვენი პროდუქცია“ -> ✅ „ჩვენი სასუსნავები / ხრამუნები“
+  - ❌ „მოხარული ვარ რომ დაგვიკავშირდით“ -> ამოღებულია (მშრალი, რობოტული მისალმება)
+  - ❌ „მადლობა მომართვისთვის“ -> ამოღებულია
+  - ❌ „გისურვებთ სასიამოვნო/წარმატებულ დღეს“ -> ✅ „გაახარეთ თქვენი ცუგა! ❤️“
+  - ❌ „დამატებითი შეკითხვა ხომ არ გაქვთ?“ -> ამოღებულია (ქოლ-ცენტრის ტიკეტის დახურვის შაბლონი)
+  - ❌ „შეგვიძლია შემოგთავაზოთ“ -> ✅ „გვაქვს“ / „გირჩევთ“
+  - ❌ „მოგაწოდოთ“ -> ✅ „მოგართვათ / მოგიტანთ“ (ქართულ ენაში საკვების და სასუსნავის სწორი, თბილი ტრადიცია)
+* **სისტემური დეტერმინისტული გაწმენდა:**
+  - AI პასუხის გაცემის შემდეგ გააქტიურებულია regex ფილტრები `src/services/ai.js`-ში, რომლებიც ნებისმიერ გაპარულ კორპორაციულ კლიშეს ავტომატურად ცვლის თბილი, ხელოსნური ფრაზებით.
