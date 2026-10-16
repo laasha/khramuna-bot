@@ -22,10 +22,17 @@ export async function notifyTelegramOrder(order) {
   const notesDetails = order.deliveryNotes ? `📝 *შენიშვნა/დრო:* ${order.deliveryNotes}\n` : '';
   const cityDetails = order.city ? `🏙️ *ქალაქი:* ${order.city}\n` : '';
 
+  const isPaid = order.status === 'CONFIRMED_PAID';
   const isCash = (order.paymentMethod || '').toLowerCase().includes('ნაღდ') || (order.paymentMethod || '').toLowerCase() === 'cash';
-  const paymentBanner = isCash
-    ? `💵 *გადახდის მეთოდი:* ნაღდი კურიერთან\n🔴 *კურიერის ინსტრუქცია:* **გამოსართმევია: ${total} ₾ (ჩაიბარეთ ნაღდი)**`
-    : `💳 *გადახდის მეთოდი:* საბანკო გადარიცხვა\n🟢 *კურიერის ინსტრუქცია:* **თანხა უკვე გადახდილია, კლიენტს ფული არ გამოართვათ!**`;
+
+  let paymentBanner = '';
+  if (isPaid) {
+    paymentBanner = `💳 *გადახდის მეთოდი:* საბანკო გადარიცხვა (დამოწმებულია ✅)\n🟢 *კურიერის ინსტრუქცია:* **თანხა უკვე გადახდილია, კლიენტს ფული არ გამოართვათ!**`;
+  } else if (isCash) {
+    paymentBanner = `💵 *გადახდის მეთოდი:* ნაღდი კურიერთან\n🔴 *კურიერის ინსტრუქცია:* **გამოსართმევია: ${total} ₾ (ჩაიბარეთ ნაღდი ჩაბარებისას)**`;
+  } else {
+    paymentBanner = `💳 *გადახდის მეთოდი:* საბანკო გადარიცხვა (ელოდება ჩარიცხვას ⏳)\n🟡 *კურიერის ინსტრუქცია:* **ყურადღება! თანხა ჯერ არ ჩარიცხულა. არ გაატანოთ კურიერს, სანამ ქვითარი არ დადასტურდება!**`;
+  }
 
   const text = `
 🐾 *ახალი შეკვეთა #${order.id} — ხრამუნა*

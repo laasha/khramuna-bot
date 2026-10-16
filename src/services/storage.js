@@ -103,11 +103,18 @@ export function syncOrdersToCsv() {
  */
 export function saveOrder(orderData) {
   const orders = readJsonFile(ORDERS_FILE, []);
+  const isCash = (orderData.paymentMethod || '').toLowerCase().includes('ნაღდ') || (orderData.paymentMethod || '').toLowerCase() === 'cash';
+  const isPaid = orderData.status === 'CONFIRMED_PAID';
+  const initialStatus = isPaid
+    ? 'CONFIRMED_PAID'
+    : (isCash ? 'PAY_ON_DELIVERY' : 'AWAITING_PAYMENT');
+
   const newOrder = {
     id: `KHR-${Date.now().toString().slice(-6)}`,
     createdAt: new Date().toISOString(),
-    status: 'PENDING', // PENDING, CONFIRMED, DISPATCHED, DELIVERED, CANCELLED
+    status: initialStatus,
     ...orderData,
+    status: initialStatus, // strict guard: avoid premature CONFIRMED
   };
   orders.push(newOrder);
   writeJsonFile(ORDERS_FILE, orders);
