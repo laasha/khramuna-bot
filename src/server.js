@@ -200,9 +200,38 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const VERIFY_TOKEN = process.env.FB_VERIFY_TOKEN || 'khramuna_secret_verify_token';
 
-app.use(express.json());
+import crypto from 'node:crypto';
+app.use(express.json({
+  verify: (req, res, buf) => {
+    req.rawBody = buf;
+  }
+}));
 app.use(express.static('public'));
 const BASE_HOST = process.env.PUBLIC_URL || 'https://khramuna-bot.vercel.app';
+
+const APP_SECRET = process.env.FB_APP_SECRET || process.env.APP_SECRET;
+
+function verifyMetaSignature(req) {
+  if (!APP_SECRET) return true; // Pass if secret not configured in env
+  const signature = req.headers['x-hub-signature-256'];
+  if (!signature) {
+    console.warn('[Webhook Security] Missing x-hub-signature-256 header.');
+    return false;
+  }
+  const elements = signature.split('=');
+  const signatureHash = elements[1];
+  const expectedHash = crypto
+    .createHmac('sha256', APP_SECRET)
+    .update(req.rawBody || JSON.stringify(req.body))
+    .digest('hex');
+
+  if (signatureHash !== expectedHash) {
+    console.error('[Webhook Security] Signature validation failed! Untrusted request rejected.');
+    return false;
+  }
+  return true;
+}
+
 
 // Mount Khramuna Admin Dashboard
 app.use('/api/dashboard', dashboardRouter);
@@ -518,6 +547,9 @@ app.get('/webhook', (req, res) => {
  * Meta Webhook Event Handler (Facebook Messenger incoming messages)
  */
 app.post('/webhook', async (req, res) => {
+  if (!verifyMetaSignature(req)) {
+    return res.status(403).send('Invalid signature');
+  }
   const body = req.body;
   console.log('[Webhook Incoming POST]:', JSON.stringify(body));
 
@@ -1001,7 +1033,7 @@ app.post('/webhook', async (req, res) => {
                 await sendMessengerMessage(senderPsid, 'ესეც ჩვენი „დრაკონის თათები“ (100გ) — 100% ქათმის ფეხი 🐾 ბუნებრივი კოლაგენი სახსრებისა და კბილების გასაწმენდად.');
               } else if (mentionsPowder && !mentionsLung && !mentionsLiver && !mentionsPaws) {
                 await sendMessengerImage(senderPsid, `${BASE_HOST}/images/pudra_v3.jpg`);
-                await sendMessengerMessage(senderPsid, 'ესეც „ჯადოსნური პუდრა“ (40გ) — 100% ხორცის ტოპინგი 🐾 მადისაღმძვრელი არომატი პრეტენზიული ძაღლებისთვის.');
+                await sendMessengerMessage(senderPsid, 'ესეც „ჯადოსნური პუდრა“ (40გ) — 100% საქონლის გამომშრალი ღვიძლი და ფილტვი 🐾 მადისაღმძვრელი ბუნებრივი ტოპინგი.');
               } else {
                 await sendMessengerImage(senderPsid, `${BASE_HOST}/images/full_pack_v5.jpg`);
                 await sendMessengerMessage(senderPsid, 'გაეცანით ჩვენს ნატურალურ ასორტიმენტს 🐾 ქვემოთ შეგიძლიათ დეტალურადაც დაათვალიეროთ:');
