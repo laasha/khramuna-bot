@@ -48,6 +48,60 @@ function enqueueUserMessage(senderPsid, text) {
 }
 
 import 'dotenv/config';
+
+function getContextualQuickReplies(text) {
+  if (!text || typeof text !== 'string') return null;
+  const clean = text.toLowerCase();
+
+  // 1. Product Selection moment: when bot asks which product to choose or lists them
+  if (
+    clean.includes('რომელ სასუსნავ') ||
+    clean.includes('რომელს შევურჩევ') ||
+    clean.includes('რომელი შევურჩიოთ') ||
+    clean.includes('რომელი მოგეწონათ') ||
+    clean.includes('რომელიმე გაგიმზადოთ') ||
+    (clean.includes('თათებ') && clean.includes('ღრუბელ') && (clean.includes('?') || clean.includes('რომელ')))
+  ) {
+    return [
+      { title: '🎁 Full Pack (49.50₾)', payload: 'SELECT_FULL_PACK' },
+      { title: '🦴 თათები (18₾)', payload: 'SELECT_PAWS' },
+      { title: '☁️ ღრუბელი (15₾)', payload: 'SELECT_LUNG' },
+      { title: '✨ პუდრა (12₾)', payload: 'SELECT_POWDER' }
+    ];
+  }
+
+  // 2. Location / Delivery City moment: when bot asks where to deliver or which city
+  if (
+    clean.includes('რომელ ქალაქ') ||
+    clean.includes('სად მოგართვათ') ||
+    clean.includes('სად გამოვაგზავნოთ') ||
+    clean.includes('თბილისში ბრძანდებით') ||
+    clean.includes('თბილისში გყავთ ვინმე') ||
+    clean.includes('რომელ უბანში')
+  ) {
+    return [
+      { title: '📍 თბილისი', payload: 'CITY_TBILISI' },
+      { title: '📦 რეგიონი (ფოსტა)', payload: 'CITY_REGION' },
+      { title: '🚗 საბურთალო (მეტრო)', payload: 'CITY_SABURTALO' }
+    ];
+  }
+
+  // 3. Payment Method moment: when bot asks how to pay
+  if (
+    clean.includes('გადახდის მეთოდი') ||
+    clean.includes('ნაღდით გირჩევნიათ თუ') ||
+    clean.includes('მობილბანკით გირჩევნიათ') ||
+    (clean.includes('გადარიცხვ') && clean.includes('ნაღდ'))
+  ) {
+    return [
+      { title: '💳 მობილბანკით', payload: 'PAY_BANK' },
+      { title: '💵 ნაღდით კურიერთან', payload: 'PAY_CASH' }
+    ];
+  }
+
+  return null;
+}
+
 function sanitizeOutgoingText(text) {
   if (!text || typeof text !== 'string') return text;
   // Deterministic Safety Shield against profanity, insult echoes, and coarse slang
@@ -810,6 +864,32 @@ app.post('/webhook', async (req, res) => {
               }
             }
 
+            
+            // Fast-path: Order Tracking Self-Service ("როდის მოვა?", "სად არის შეკვეთა?", "კურიერი სად არის?")
+            const isOrderTrackingQuery = /(?:როდის მოვა|როდის მომიტან|სად არის ჩემი შეკვეთ|სად არის კურიერ|კურიერი სად არის|სად არის ამანათ|შეკვეთის სტატუსი)/i.test(cleanText);
+            if (isOrderTrackingQuery) {
+              const latestOrder = getUserLatestOrder(senderPsid);
+              if (latestOrder) {
+                console.log(`[Messenger Fast-Path] Handled order tracking for ${senderPsid} (Order #${latestOrder.id})`);
+                let trackingReply = '';
+                const phoneSnippet = latestOrder.phone ? ` ნომერზე: ${latestOrder.phone}` : '';
+                if (latestOrder.status === 'CONFIRMED_PAID') {
+                  trackingReply = `თქვენი შეკვეთა (#${latestOrder.id} — ${latestOrder.product}) დადასტურებულია და გადაცემულია საკურიერო გრაფიკში! 🐾 კურიერი მოგართმევთ დღის განმავლობაში 12:00-დან 19:00-მდე, მოსვლამდე 20-30 წუთით ადრე აუცილებლად დაგირეკავთ${phoneSnippet} 📞`;
+                } else if (latestOrder.status === 'PAY_ON_DELIVERY') {
+                  trackingReply = `თქვენი შეკვეთა (#${latestOrder.id} — ${latestOrder.product}) მზადდება და მოგართმევთ კურიერი (გადახდა კურიერთან ნაღდით — ${latestOrder.price}₾) 🐾 მოსვლამდე 20-30 წუთით ადრე დაგირეკავთ${phoneSnippet} 📞`;
+                } else if (latestOrder.status === 'OUT_FOR_DELIVERY' || latestOrder.status === 'DISPATCHED') {
+                  trackingReply = `თქვენი შეკვეთა (#${latestOrder.id}) კურიერს უკვე თან აქვს და გზაშია! 🚗 მალე დაგიკავშირდებათ${phoneSnippet} 🐾`;
+                } else if (latestOrder.status === 'DELIVERED') {
+                  trackingReply = `თქვენი შეკვეთა (#${latestOrder.id} — ${latestOrder.product}) უკვე ჩაბარებულია ❤️ იმედია თქვენი ოთხფეხა მეგობარი კმაყოფილია! თუ კიდევ დაგჭირდეთ რამე, ნებისმიერ დროს მოგვწერეთ 🐾`;
+                } else {
+                  trackingReply = `თქვენი შეკვეთა (#${latestOrder.id} — ${latestOrder.product}) მიღებულია და მზადების პროცესშია 🐾 კურიერი მოგართმევთ 24-48 საათში. თუ რამე დეტალის დაზუსტება გსურთ, სიამოვნებით დაგეხმარებით ❤️`;
+                }
+                await sendMessengerMessage(senderPsid, trackingReply);
+                updateSession(senderPsid, 'assistant', trackingReply);
+                continue;
+              }
+            }
+
             // Only show interactive catalog carousel if specifically asked
             if (cleanText === 'კატალოგი' || cleanText === 'მენიუ') {
               await sendMessengerMessage(senderPsid, 'გთავაზობთ ჩვენს 100% ნატურალურ ასორტიმენტს: 🐾');
@@ -940,9 +1020,16 @@ app.post('/webhook', async (req, res) => {
                 finalText = 'დიდი მადლობა! ❤️ დეტალები ჩანიშნულია. დამატებით რაიმე ხომ არ გაინტერესებთ? 🐾';
               }
             }
-            // Send pure, natural human message without robotic quick-reply buttons
-            await sendMessengerMessage(senderPsid, finalText);
-            updateSession(senderPsid, 'assistant', finalText);
+            // Send message with contextual Quick-Reply pills at decision bottlenecks, or pure text otherwise
+            const sanitizedText = sanitizeOutgoingText(finalText);
+            const contextualPills = getContextualQuickReplies(sanitizedText);
+            if (contextualPills && contextualPills.length > 0) {
+              console.log(`[Messenger] Sending ${contextualPills.length} contextual quick-reply pills...`);
+              await sendQuickReplies(senderPsid, sanitizedText, contextualPills);
+            } else {
+              await sendMessengerMessage(senderPsid, sanitizedText);
+            }
+            updateSession(senderPsid, 'assistant', sanitizedText);
           }
         }
 

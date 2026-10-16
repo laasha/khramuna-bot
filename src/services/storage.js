@@ -237,9 +237,9 @@ export function updateSession(userId, role, text) {
     text,
     timestamp: new Date().toISOString(),
   });
-  // Keep last 15 messages for token efficiency and relevant context
-  if (session.history.length > 15) {
-    session.history = session.history.slice(-15);
+  // Keep last 30 messages for rich multi-day conversation depth
+  if (session.history.length > 30) {
+    session.history = session.history.slice(-30);
   }
   session.lastActivity = Date.now();
   memorySessions.set(userId, session);
