@@ -1308,24 +1308,34 @@ export async function verifyReceiptImage(imageUrl, expectedAmount = null) {
     const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
     const mimeType = contentType.split(';')[0].trim() || 'image/jpeg';
 
-    const prompt = `შეაფასე ეს სურათი: არის თუ არა ეს საბანკო გადარიცხვის ქვითარი (TBC Bank, Bank of Georgia, BOG ან სხვა ქართული ბანკი)?
-ამოიღე:
-1. bank: ბანკის დასახელება (TBC / BOG / OTHER / NONE)
-2. amount: გადარიცხული თანხა ლარში (რიცხვი)
-3. recipient: მიმღების სახელი ან ანგარიში
-4. isSuccessful: გადარიცხვა წარმატებულია თუ მოლოდინში/ჩაშლილი
-5. isReceipt: არის თუ არა ნამდვილი ქვითარი (თუ ძაღლის ფოტოა, მემი ან სხვა რამეა, isReceipt უნდა იყოს false!)
-${expectedAmount ? `მოსალოდნელი თანხაა: ${expectedAmount}₾.` : ''}
+    const prompt = `შეაფასე ეს სურათი: არის თუ არა ეს საბანკო გადარიცხვის ქვითარი (TBC Bank, Bank of Georgia / BOG, Liberty Bank ან სხვა ქართული ბანკი)?
+ჩვენი საბანკო ანგარიშები და მიმღების ინიციალებია:
+- TBC: GE89TB7331945061100067
+- BOG: GE86BG0000000570774787
+- მიმღები: ლ.ხ. (ლაშა ხიჯაკაძე / Lasha Khijakadze / ხრამუნა)
+
+ამოიღე შემდეგი მონაცემები:
+1. isReceipt: boolean (მკაცრად true მხოლოდ მაშინ, თუ ეს არის ნამდვილი საბანკო გადარიცხვის ქვითარი/სქრინშოტი. თუ ძაღლის ფოტოა, მემია, ჩათის სქრინია ან სხვა რამეა, აუცილებლად დააბრუნე false!)
+2. bank: ბანკის დასახელება (TBC / BOG / LIBERTY / CREDO / OTHER / NONE)
+3. amount: გადარიცხული თანხა ლარში (მხოლოდ რიცხვი, float, მაგ. 49.50 ან 15)
+4. recipient: მიმღების სახელი/ინიციალები ქვითარზე (ჩვენი ინიციალებია: ლ.ხ.)
+5. matchesAccount: boolean (არის თუ არა მიმღები ლ.ხ. / ლაშა / ხრამუნა ან ემთხვევა თუ არა ჩვენს IBAN-ს)
+6. isSuccessful: boolean (შესრულებულია/წარმატებულია გადარიცხვა თუ მოლოდინშია/ჩაიშალა)
+7. matchesExpected: boolean (${expectedAmount ? `მოსალოდნელი თანხაა ${expectedAmount}₾. ემთხვევა თუ არა გადარიცხული თანხა მოსალოდნელს (>= ${expectedAmount})?` : 'true'})
+8. transactionId: გადარიცხვის კოდი/იდენტიფიკატორი (თუ ჩანს, ან null)
+9. note: მოკლე შეფასება ქართულად
 
 დააბრუნე მხოლოდ სუფთა JSON ობიექტი:
 {
   "isReceipt": true,
   "bank": "TBC",
   "amount": 49.50,
-  "recipient": "ლ.ხ. / ხრამუნა",
+  "recipient": "ლ.ხ.",
+  "matchesAccount": true,
   "isSuccessful": true,
   "matchesExpected": true,
-  "note": "მოკლე ქართული შეფასება"
+  "transactionId": "12345678",
+  "note": "49.50 ლარის გადარიცხვა TBC-დან ლ.ხ.-ზე წარმატებით შესრულდა"
 }`;
 
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`, {
@@ -1350,7 +1360,7 @@ ${expectedAmount ? `მოსალოდნელი თანხაა: ${expe
     const data = await res.json();
     const text = data.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) return { isReceipt: false };
-    const cleanJson = text.replace(/^\`\`\`json/i, '').replace(/\`\`\`$/i, '').trim();
+    const cleanJson = text.replace(/^```json/i, '').replace(/```$/i, '').trim();
     const parsed = JSON.parse(cleanJson);
     return parsed;
   } catch (err) {

@@ -708,40 +708,47 @@ app.post('/webhook', async (req, res) => {
               const photoUrl = imageAttachment.payload.url;
               console.log('[Messenger] Received image from ' + senderPsid + ': ' + photoUrl);
 
-              // Check if user was actively in the payment/checkout flow
+              // Check for payment receipt via Vision OCR
               const session = getSession(senderPsid);
-              const lastMsgs = (session.history || []).slice(-6).map(m => m.text).join(' ');
-              const isWaitingPayment = lastMsgs.includes('GE89TB') ||
-                                       lastMsgs.includes('GE86BG') ||
-                                       lastMsgs.includes('GE05TB') ||
-                                       lastMsgs.includes('GE12BG') ||
-                                       lastMsgs.includes('გადარიცხვ') ||
-                                       lastMsgs.includes('ანგარიშზე') ||
-                                       lastMsgs.includes('ქვითარ') ||
-                                       lastMsgs.includes('ჩარიცხვ') ||
-                                       lastMsgs.includes('რეკვიზიტ');
+              const latestOrder = getUserLatestOrder(senderPsid);
+              const expectedPrice = latestOrder ? latestOrder.price : null;
 
-              if (isWaitingPayment) {
-                console.log(`[Messenger Vision] Verifying receipt image from ${senderPsid}...`);
-                const latestOrder = getUserLatestOrder(senderPsid);
-                const expectedPrice = latestOrder ? latestOrder.price : null;
-                const ocrResult = await verifyReceiptImage(photoUrl, expectedPrice);
-                console.log(`[Messenger Vision OCR Result]:`, ocrResult);
+              console.log(`[Messenger Vision] Verifying incoming image from ${senderPsid} via Gemini Vision OCR...`);
+              const ocrResult = await verifyReceiptImage(photoUrl, expectedPrice);
+              console.log(`[Messenger Vision OCR Result]:`, ocrResult);
 
-                if (ocrResult && ocrResult.isReceipt) {
-                  await notifyTelegramReceipt(photoUrl, senderPsid);
-                  if (latestOrder) {
-                    updateOrderStatus(latestOrder.id, 'CONFIRMED_PAID', `Verified ${ocrResult.amount}₾ via ${ocrResult.bank}`);
+              if (ocrResult && ocrResult.isReceipt) {
+                // Forward rich verified receipt details to Telegram channel
+                await notifyTelegramReceipt(photoUrl, senderPsid, ocrResult, latestOrder);
+
+                let receiptConfirm = '';
+                const bankBadge = ocrResult.bank && ocrResult.bank !== 'NONE' ? ` [${ocrResult.bank}]` : '';
+                const amountBadge = ocrResult.amount ? ` (${ocrResult.amount}₾)` : '';
+
+                if (latestOrder) {
+                  const paidEnough = !ocrResult.amount || !latestOrder.price || (ocrResult.amount >= latestOrder.price);
+                  if (paidEnough) {
+                    updateOrderStatus(latestOrder.id, 'CONFIRMED_PAID', `Verified ${ocrResult.amount || latestOrder.price}₾ via ${ocrResult.bank || 'Bank'} [ლ.ხ.]`);
+                    const hasDeliveryDetails = latestOrder.address && latestOrder.address !== 'არ არის მითითებული' && latestOrder.phone && latestOrder.phone !== 'არ არის მითითებული';
+                    if (hasDeliveryDetails) {
+                      receiptConfirm = `დიდი მადლობა! ❤️ გადარიცხვა${bankBadge}${amountBadge} დადასტურებულია! შეკვეთა მიღებულია და გადაეცა დასამზადებლად. კურიერი მოგართმევთ მითითებულ მისამართზე 🐾`;
+                    } else {
+                      receiptConfirm = `დიდი მადლობა! ❤️ გადარიცხვა${bankBadge}${amountBadge} დადასტურებულია! გთხოვთ მოგვწეროთ თქვენი მისამართი და საკონტაქტო ნომერი, რომ შეკვეთა კურიერს გავატანოთ 🐾`;
+                    }
+                  } else {
+                    const diff = (latestOrder.price - ocrResult.amount).toFixed(2);
+                    updateOrderStatus(latestOrder.id, 'PARTIALLY_PAID', `Received ${ocrResult.amount}₾, expected ${latestOrder.price}₾ (missing ${diff}₾)`);
+                    receiptConfirm = `დიდი მადლობა! ❤️ თქვენი გადარიცხვა${bankBadge}${amountBadge} მივიღეთ. შეკვეთის თანხაა ${latestOrder.price}₾ (დარჩენილია ${diff}₾). გთხოვთ შეგვატყობინოთ ან გადმორიცხოთ დარჩენილი ნაწილი, რომ შეკვეთა გავუშვათ 🐾`;
                   }
-                  const amountBadge = ocrResult.amount ? ` (${ocrResult.amount}₾)` : '';
-                  const bankBadge = ocrResult.bank && ocrResult.bank !== 'NONE' ? ` [${ocrResult.bank}]` : '';
-                  const receiptConfirm = `დიდი მადლობა! გადარიცხვის ქვითარი${bankBadge} დამოწმებულია${amountBadge} ❤️ თუ მისამართი და ტელეფონის ნომერი ჯერ არ მოგიწერიათ, გთხოვთ მოგვწეროთ, რომ შეკვეთა კურიერს გავატანოთ 🐾`;
-                  await sendMessengerMessage(senderPsid, receiptConfirm);
-                  updateSession(senderPsid, 'assistant', receiptConfirm);
-                  continue;
                 } else {
-                  console.log(`[Messenger Vision] Image is not a verified payment receipt, proceeding to general pet photo flow`);
+                  receiptConfirm = `დიდი მადლობა! ❤️ გადარიცხვის ქვითარი${bankBadge}${amountBadge} დამოწმებულია! გთხოვთ მოგვწეროთ მიტანის მისამართი და ტელეფონის ნომერი, რომ შეკვეთა კურიერს გავატანოთ 🐾`;
                 }
+
+                await sendMessengerMessage(senderPsid, receiptConfirm);
+                updateSession(senderPsid, 'assistant', receiptConfirm);
+                continue;
+              } else {
+                console.log(`[Messenger Vision] Image is not a verified payment receipt, proceeding to general pet photo flow`);
               }
 
               // Check if attachment is a Sticker / Like reaction

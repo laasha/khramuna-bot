@@ -85,13 +85,30 @@ ${notesDetails}📞 *ტელეფონი:* \`${order.phone || 'არ ა�
 /**
  * Forwards payment receipt screenshot to Telegram channel for admin verification.
  */
-export async function notifyTelegramReceipt(photoUrl, senderId) {
+export async function notifyTelegramReceipt(photoUrl, senderId, ocrResult = null, order = null) {
   const token = process.env.TELEGRAM_BOT_TOKEN || '8602396382:AAFiNvqT4SInU4VcIDSJmV31FdK-spMKm7M';
   const chatId = process.env.TELEGRAM_CHAT_ID || '1317626946';
 
   if (!token || !chatId || !photoUrl) return false;
 
-  const caption = `📸 *მიღებულია გადარიცხვის ქვითარი!*\n👤 კლიენტი (ID): \`${senderId}\`\n⏰ ${new Date().toLocaleString('ka-GE', { timeZone: 'Asia/Tbilisi' })}\nგთხოვთ გადაამოწმოთ საბანკო ამონაწერი.`;
+  let caption = '';
+  if (ocrResult && ocrResult.isReceipt) {
+    const bankStr = ocrResult.bank || 'უცნობი ბანკი';
+    const amountStr = ocrResult.amount ? `${ocrResult.amount}₾` : 'მითითებული არაა';
+    const matchBadge = ocrResult.matchesExpected ? '✅ ემთხვევა' : (order?.price ? `⚠️ მოსალოდნელია ${order.price}₾` : '');
+    const accountBadge = ocrResult.matchesAccount ? '✅ მიმღები: ლ.ხ.' : '⚠️ გადაამოწმეთ მიმღები';
+
+    caption = `📸 *გადარიცხვის ქვითარი დამოწმებულია (AI OCR)!*\n` +
+      `🏦 *ბანკი:* ${bankStr}\n` +
+      `💰 *თანხა:* ${amountStr} ${matchBadge}\n` +
+      `🎯 *რეკვიზიტი:* ${accountBadge}\n` +
+      (ocrResult.transactionId ? `🆔 *ტრანზაქცია:* \`${ocrResult.transactionId}\`\n` : '') +
+      (order ? `📋 *შეკვეთა:* \`${order.id}\` (${order.product})\n📍 *მისამართი:* ${order.address}\n📞 *ტელეფონი:* ${order.phone}\n` : '') +
+      `👤 *კლიენტი (ID):* \`${senderId}\`\n` +
+      `⏰ ${new Date().toLocaleString('ka-GE', { timeZone: 'Asia/Tbilisi' })}`;
+  } else {
+    caption = `📸 *მიღებულია გადარიცხვის ქვითარი!*\n👤 კლიენტი (ID): \`${senderId}\`\n⏰ ${new Date().toLocaleString('ka-GE', { timeZone: 'Asia/Tbilisi' })}\nგთხოვთ გადაამოწმოთ საბანკო ამონაწერი.`;
+  }
 
   try {
     const res = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
