@@ -225,3 +225,5 @@
     - `powder` / `pudra` / `picky` / `მადა`: ხვდება მადისაღმძვრელი პუდრის შეთავაზებით.
     - `allergy` / `lung` / `ალერგი`: ხვდება ჰიპოალერგიული, დიეტური ფილტვის შეთავაზებით.
     - `full_pack` / `ნაკრებ`: ხვდება სრული ოთხეულის 20%-იანი ეკონომიის შეთავაზებით.
+
+- [2026-10-17] Webhooks & Meta Graph: Meta echo events (is_echo: true) must check message.app_id, outgoing MID sets, and recentBotSends before pausing bot; Instagram conversation hydration requires platform=instagram in Meta Graph API query.
