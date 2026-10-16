@@ -48,6 +48,18 @@ function enqueueUserMessage(senderPsid, text) {
 }
 
 import 'dotenv/config';
+function sanitizeOutgoingText(text) {
+  if (!text || typeof text !== 'string') return text;
+  // Deterministic Safety Shield against profanity, insult echoes, and coarse slang
+  const toxicPattern = /(?:ჩათლაშკ|ჩათლახ|ბოზო|ბოზი|ნაბიჭვ|დებილ|იდიოტ)/i;
+  if (toxicPattern.test(text)) {
+    console.warn('[Safety Shield] Outgoing profanity intercepted and neutralized!');
+    return 'ჰაჰა, ხდება ხოლმე 😂 მთავარია თქვენ და თქვენი ცუგა იყოთ კარგად! თუ რამე გემრიელი დაგჭირდეთ შესარიგებლად ან გასახარებლად, სიამოვნებით დაგეხმარებით 🐾';
+  }
+  // Orthographic typo fix: replace "თბილისი სიტყვებისთვის" with "თბილი სიტყვებისთვის"
+  return text.replace(/თბილისი\s+სიტყვებისთვის/g, 'თბილი სიტყვებისთვის');
+}
+
 import dashboardRouter from './routes/dashboard.js';
 import { DASHBOARD_HTML } from './routes/dashboardHtml.js';
 import express from 'express';

@@ -325,8 +325,12 @@ export function updateCustomerProfile(userId, newFields) {
     updatedAt: new Date().toISOString(),
   };
 
-  if (newFields.petName && typeof newFields.petName === 'string' && newFields.petName.trim() && newFields.petName !== 'უცნობი') {
-    updated.petName = newFields.petName.trim();
+  if (newFields.petName && typeof newFields.petName === 'string') {
+    const rawPet = newFields.petName.trim();
+    const invalidPets = /^(?:ალერგიული|ორწლინახევრის|ბიგლის|რას|ცუგასთვის|ძაღლისთვის|საყვარელი ცუგა|ლეკვის|ლეკვი|ძაღლი|ცუგა|პატარა|დიდი|ფისო|კი|არა|ჰო|მინდა|უცნობი)$/i;
+    if (rawPet.length >= 2 && !invalidPets.test(rawPet) && !rawPet.endsWith('ისთვის') && !rawPet.endsWith('სთვის')) {
+      updated.petName = rawPet;
+    }
   }
   if (newFields.petType && typeof newFields.petType === 'string' && newFields.petType.trim()) {
     updated.petType = newFields.petType.trim();
@@ -340,11 +344,20 @@ export function updateCustomerProfile(userId, newFields) {
   if (newFields.allergies && typeof newFields.allergies === 'string' && newFields.allergies.trim()) {
     updated.allergies = newFields.allergies.trim();
   }
-  if (newFields.preferredAddress && typeof newFields.preferredAddress === 'string' && newFields.preferredAddress.trim()) {
-    updated.preferredAddress = newFields.preferredAddress.trim();
+  if (newFields.preferredAddress && typeof newFields.preferredAddress === 'string') {
+    const rawAddr = newFields.preferredAddress.trim();
+    const invalidAddrRegex = /(?:ჩავრიცხავ|საქ.?ბანკ|თიბისი|ანგარიშ|გაქვთ|ფილიალ|მაღაზია|მითხარით|წავიღებ|წავიღეფ|არ მინდა)/i;
+    if (rawAddr.length >= 6 && !invalidAddrRegex.test(rawAddr)) {
+      updated.preferredAddress = rawAddr;
+    }
   }
-  if (newFields.phone && typeof newFields.phone === 'string' && newFields.phone.trim()) {
-    updated.phone = newFields.phone.trim();
+  if (newFields.phone && typeof newFields.phone === 'string') {
+    let cleanPhone = String(newFields.phone).replace(/[^\d]/g, '');
+    if (cleanPhone.startsWith('995') && cleanPhone.length >= 12) cleanPhone = cleanPhone.slice(3);
+    if (cleanPhone.startsWith('0')) cleanPhone = cleanPhone.replace(/^0+/, '');
+    if (cleanPhone.length === 9 && cleanPhone.startsWith('5') && cleanPhone !== '587854473') {
+      updated.phone = cleanPhone;
+    }
   }
   if (newFields.lastOrder) {
     updated.lastOrder = newFields.lastOrder;
