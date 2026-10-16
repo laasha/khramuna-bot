@@ -7,7 +7,7 @@ const IG_GRAPH_API_BASE = 'https://graph.instagram.com/v19.0';
 /**
  * Sends a text message to a specific recipient (PSID or IGSID).
  */
-export async function sendMessengerMessage(recipientId, text) {
+export async function sendMessengerMessage(recipientId, text, messageTag = null) {
   const pageAccessToken = process.env.FB_PAGE_ACCESS_TOKEN;
   const igAccessToken = process.env.IG_ACCESS_TOKEN;
 

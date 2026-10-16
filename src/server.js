@@ -66,7 +66,7 @@ export function getContextualQuickReplies(text) {
   ) {
     if (clean.includes('სრულ ნაკრებ') || (clean.includes('full pack') && clean.includes('როგორ გირჩევნიათ'))) {
       return [
-        { title: '🎁 Full Pack (49.50₾)', payload: 'SELECT_FULL_PACK' },
+        { title: '🎁 Full Pack (49.5₾)', payload: 'SELECT_FULL_PACK' },
         { title: '🦴 1 შეკვრა (23₾)', payload: 'SELECT_SINGLE' },
         { title: '☁️ +ღრუბელი (15₾)', payload: 'ADD_LUNG' }
       ];
@@ -635,7 +635,7 @@ app.post('/webhook', async (req, res) => {
                 if (productKey === 'full_pack') {
                   confirmText = `დიდი სიამოვნებით! 🎁\nFull Pack-ს (ოთხივე სასუსნავს) სიყვარულით გაგიმზადებთ — 49.50₾ და მიტანაც უფასოა!\n\nგთხოვთ მომწეროთ მიტანის მისამართი და საკონტაქტო ნომერი 📍📞`;
                 } else {
-                  confirmText = `დიდი სიამოვნებით! 🐾\n„${product.name}“ — ${product.price}₾.\n(თბილისში მიტანა 5₾, ხოლო 2 შეკვრაზე მიტანა უფასოა 🚚).\n\nგთხოვთ მომწეროთ მიტანის მისამართი და საკონტაქტო ნომერი 📍📞`;
+                  confirmText = `დიდი სიამოვნებით! 🐾\n„${product.name}“ — ${product.price}₾.\n(თბილისში მიტანა 5₾, ხოლო 45₾-დან ან Full Pack-ზე მიტანა უფასოა 🚚).\n\nგთხოვთ მომწეროთ მიტანის მისამართი და საკონტაქტო ნომერი 📍📞`;
                 }
                 await sendMessengerMessage(senderPsid, confirmText);
                 updateSession(senderPsid, 'assistant', confirmText);
