@@ -659,17 +659,60 @@ ${profile.lastOrder ? `• წინა შეკვეთა: ${profile.lastOrd
 }
 
 // Strict Regional Delivery Guard: Force isOrderReady to false if address is outside Tbilisi
+// Uses Unicode property escapes (?<!\p{L}) to handle Georgian script and Latin transliteration
+// Protects Tbilisi street names named after regions (e.g. ქუთაისის ქუჩა, რუსთაველის გამზირი, გორგასლის ქ.)
 function enforceTbilisiDeliveryGuard(parsed) {
   if (!parsed || !parsed.isOrderReady || !parsed.order) return parsed;
   const targetText = ((parsed.order.address || '') + ' ' + (parsed.order.city || '') + ' ' + (parsed.order.deliveryNotes || '')).toLowerCase();
-  const regionalKeywords = ['სამტრედია', 'ქუთაისი', 'ბათუმი', 'ზუგდიდი', 'რუსთავი', 'თელავი', 'გორი', 'ფოთი', 'ხაშური', 'ოზურგეთი', 'სენაკი', 'მარნეული', 'ახალციხე', 'ბორჯომი', 'ზესტაფონი', 'საქართველოს ფოსტა'];
-  const hasRegion = regionalKeywords.some(city => targetText.includes(city));
-  if (hasRegion) {
-    console.log('[TbilisiDeliveryGuard] Intercepted regional order attempt:', targetText);
+
+  // If text explicitly identifies as a street in Tbilisi:
+  const isNamedStreetInTbilisi = /(?:ქუთაისის|ბათუმის|თელავის|ფოთის|გორის|მარნეულის|ბორჯომის)\s+(?:ქუჩა|ქ\.|გამზირი|ჩიხი|შესახვევი)/iu.test(targetText);
+  const tbilisiDistricts = ['თბილის', 'tbilisi', 'საბურთალო', 'ვაკე', 'გლდან', 'ვარკეთილ', 'დიდუბ', 'დიღომ', 'ჩუღურეთ', 'ავლაბარ', 'ისან', 'სამგორ', 'მთაწმინდ', 'ვერა', 'ორთაჭალ', 'ნაძალადევ', 'ლოტკინ', 'სანზონ', 'ბახტრიონ', 'ვაჟა', 'ყაზბეგ', 'პეკინ', 'ჭავჭავაძ', 'აღმაშენებელ', 'თემქ', 'მუხიან', 'წყნეთ', 'კოჯორ', 'ზაჰეს', 'ლილო', 'ფონიჭალ'];
+  const hasTbilisiDistrict = tbilisiDistricts.some(d => targetText.includes(d));
+
+  if (isNamedStreetInTbilisi && hasTbilisiDistrict) {
+    return parsed; // Legitimate Tbilisi address
+  }
+
+  // Explicit post or delivery notes mentioning regional post
+  if (targetText.includes('საქართველოს ფოსტ') || targetText.includes('ფოსტით გაგზავნა') || targetText.includes('georgian post')) {
+    console.log('[TbilisiDeliveryGuard] Blocked regional postage order:', targetText);
     parsed.isOrderReady = false;
     parsed.order = null;
     parsed.replyText = 'ამ ეტაპზე საკურიერო მიწოდება გვაქვს მხოლოდ თბილისში (24-48 საათში, 5₾-ად), რათა თითოეული შეკვრის მაქსიმალური სიახლე და ხელმისაწვდომი ფასი შევინარჩუნოთ 🐾 რეგიონებში ფოსტის მაღალი ტარიფების გამო ჯერჯერობით ვერ ვაგზავნით. თუ თბილისში გყავთ ახლობელი ან მეგობარი, სიამოვნებით მივუტანთ კარამდე და შემდგომ გამოგატანთ ❤️';
+    return parsed;
   }
+
+  // Regional keywords with true Unicode boundary lookarounds
+  const regionalPatterns = [
+    /(?<!\p{L})(სამტრედი[ა-ჰ]*|samtredi[a-z]*)(?!\p{L})/iu,
+    /(?<!\p{L})(ქუთაის[ა-ჰ]*|kutais[a-z]*)(?!\p{L})/iu,
+    /(?<!\p{L})(ბათუმ[ა-ჰ]*|batum[a-z]*)(?!\p{L})/iu,
+    /(?<!\p{L})(ზუგდიდ[ა-ჰ]*|zugdid[a-z]*)(?!\p{L})/iu,
+    /(?<!\p{L})(რუსთავი|რუსთავში|რუსთავთან|rustavi|rustavshi)(?!\p{L})/iu, // Excludes რუსთაველის
+    /(?<!\p{L})(თელავ[ა-ჰ]*|telav[a-z]*)(?!\p{L})/iu,
+    /(?<!\p{L})(გორი|გორში|გორთან|gori|gorshi)(?!\p{L})/iu, // Excludes გორგასალი
+    /(?<!\p{L})(ფოთ[ა-ჰ]*|poti|potshi)(?!\p{L})/iu,
+    /(?<!\p{L})(ხაშურ[ა-ჰ]*|khashur[a-z]*)(?!\p{L})/iu,
+    /(?<!\p{L})(ოზურგეთ[ა-ჰ]*|ozurget[a-z]*)(?!\p{L})/iu,
+    /(?<!\p{L})(სენაკ[ა-ჰ]*|senak[a-z]*)(?!\p{L})/iu,
+    /(?<!\p{L})(მარნეულ[ა-ჰ]*|marneul[a-z]*)(?!\p{L})/iu,
+    /(?<!\p{L})(ახალციხ[ა-ჰ]*|akhaltsikh[a-z]*)(?!\p{L})/iu,
+    /(?<!\p{L})(ბორჯომ[ა-ჰ]*|borjom[a-z]*)(?!\p{L})/iu,
+    /(?<!\p{L})(ზესტაფონ[ა-ჰ]*|zestafon[a-z]*)(?!\p{L})/iu
+  ];
+
+  for (const pattern of regionalPatterns) {
+    if (pattern.test(targetText)) {
+      if (isNamedStreetInTbilisi) return parsed;
+      console.log('[TbilisiDeliveryGuard] Intercepted regional order attempt:', targetText);
+      parsed.isOrderReady = false;
+      parsed.order = null;
+      parsed.replyText = 'ამ ეტაპზე საკურიერო მიწოდება გვაქვს მხოლოდ თბილისში (24-48 საათში, 5₾-ად), რათა თითოეული შეკვრის მაქსიმალური სიახლე და ხელმისაწვდომი ფასი შევინარჩუნოთ 🐾 რეგიონებში ფოსტის მაღალი ტარიფების გამო ჯერჯერობით ვერ ვაგზავნით. თუ თბილისში გყავთ ახლობელი ან მეგობარი, სიამოვნებით მივუტანთ კარამდე და შემდგომ გამოგატანთ ❤️';
+      return parsed;
+    }
+  }
+
   return parsed;
 }
 

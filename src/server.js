@@ -79,7 +79,7 @@ export function getContextualQuickReplies(text) {
     ];
   }
 
-  // 2. Location / Delivery City moment: when bot asks where to deliver or which city
+  // 2. Location / Delivery City moment: when bot asks where to deliver or which city (Strict Tbilisi Only)
   if (
     clean.includes('რომელ ქალაქ') ||
     clean.includes('სად მოგართვათ') ||
@@ -89,9 +89,8 @@ export function getContextualQuickReplies(text) {
     clean.includes('რომელ უბანში')
   ) {
     return [
-      { title: '📍 თბილისი', payload: 'CITY_TBILISI' },
-      { title: '📦 რეგიონი (ფოსტა)', payload: 'CITY_REGION' },
-      { title: '🚗 საბურთალო (მეტრო)', payload: 'CITY_SABURTALO' }
+      { title: '📍 თბილისში (კურიერი)', payload: 'CITY_TBILISI' },
+      { title: '🚗 საბურთალო (თვითგატანა)', payload: 'CITY_SABURTALO' }
     ];
   }
 
