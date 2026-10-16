@@ -123,6 +123,50 @@ export function sanitizeOutgoingText(text) {
   return text.replace(/თბილისი\s+სიტყვებისთვის/g, 'თბილი სიტყვებისთვის');
 }
 
+/**
+ * Delivers messages in natural human-paced conversational chunks (Dual-Bubble Pacing).
+ * If a message contains multiple paragraphs, it splits the response:
+ * Bubble 1: Opening reaction / empathy / direct answer
+ * (1.2s - 2.0s human typing indicator)
+ * Bubble 2: Actionable advice / recommendation + Quick-Reply pills
+ */
+export async function deliverConversationalReply(senderPsid, rawText, quickReplies = null) {
+  const sanitizedText = sanitizeOutgoingText(rawText);
+  if (!sanitizedText) return;
+
+  const pills = quickReplies || getContextualQuickReplies(sanitizedText);
+
+  // Split into natural chunks if there are clean paragraph boundaries (\n\n) and message is substantive
+  const paragraphs = sanitizedText.split(/\r?\n\r?\n+/).map(p => p.trim()).filter(Boolean);
+
+  if (paragraphs.length >= 2 && sanitizedText.length > 90) {
+    const chunk1 = paragraphs[0];
+    const chunk2 = paragraphs.slice(1).join('\n\n');
+
+    console.log(`[Conversational Delivery] Sending 2-bubble split for natural rhythm (${chunk1.length} chars -> ${chunk2.length} chars)...`);
+    await sendMessengerMessage(senderPsid, chunk1);
+
+    // Natural human typing latency & typing indicator before bubble 2
+    await sendSenderAction(senderPsid, 'typing_on').catch(() => {});
+    const typingPauseMs = Math.min(2000, Math.max(1100, Math.floor(chunk2.length * 10)));
+    await new Promise(r => setTimeout(r, typingPauseMs));
+
+    if (pills && pills.length > 0) {
+      await sendQuickReplies(senderPsid, chunk2, pills);
+    } else {
+      await sendMessengerMessage(senderPsid, chunk2);
+    }
+  } else {
+    // Single message bubble
+    if (pills && pills.length > 0) {
+      await sendQuickReplies(senderPsid, sanitizedText, pills);
+    } else {
+      await sendMessengerMessage(senderPsid, sanitizedText);
+    }
+  }
+}
+
+
 import dashboardRouter from './routes/dashboard.js';
 import { DASHBOARD_HTML } from './routes/dashboardHtml.js';
 import express from 'express';
@@ -737,13 +781,7 @@ app.post('/webhook', async (req, res) => {
                 }
 
                 const sanitizedText = sanitizeOutgoingText(finalText);
-                const contextualPills = getContextualQuickReplies(sanitizedText);
-                if (contextualPills && contextualPills.length > 0) {
-                  console.log(`[Messenger Photo] Sending ${contextualPills.length} contextual quick-reply pills...`);
-                  await sendQuickReplies(senderPsid, sanitizedText, contextualPills);
-                } else {
-                  await sendMessengerMessage(senderPsid, sanitizedText);
-                }
+                await deliverConversationalReply(senderPsid, sanitizedText);
                 updateSession(senderPsid, 'assistant', sanitizedText);
               } catch (aiPhotoErr) {
                 console.error('[Messenger Photo AI Error]:', aiPhotoErr.message);
@@ -1064,15 +1102,9 @@ app.post('/webhook', async (req, res) => {
                 finalText = 'დიდი მადლობა! ❤️ დეტალები ჩანიშნულია. დამატებით რაიმე ხომ არ გაინტერესებთ? 🐾';
               }
             }
-            // Send message with contextual Quick-Reply pills at decision bottlenecks, or pure text otherwise
+            // Send message with Dual-Bubble Conversational Delivery and contextual Quick-Replies
             const sanitizedText = sanitizeOutgoingText(finalText);
-            const contextualPills = getContextualQuickReplies(sanitizedText);
-            if (contextualPills && contextualPills.length > 0) {
-              console.log(`[Messenger] Sending ${contextualPills.length} contextual quick-reply pills...`);
-              await sendQuickReplies(senderPsid, sanitizedText, contextualPills);
-            } else {
-              await sendMessengerMessage(senderPsid, sanitizedText);
-            }
+            await deliverConversationalReply(senderPsid, sanitizedText);
             updateSession(senderPsid, 'assistant', sanitizedText);
           }
         }
