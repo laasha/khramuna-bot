@@ -157,3 +157,103 @@ export async function notifyTelegramAlert(title, details) {
     return false;
   }
 }
+/**
+ * Generates Daily Financial & Operations Summary for the Founder.
+ */
+export function generateDailyReport(orders = []) {
+  const now = new Date();
+  const todayStr = now.toLocaleDateString('ka-GE', { timeZone: 'Asia/Tbilisi' });
+
+  // Filter orders created today (Tbilisi timezone)
+  const todayOrders = orders.filter(o => {
+    if (!o.createdAt) return false;
+    const orderDateStr = new Date(o.createdAt).toLocaleDateString('ka-GE', { timeZone: 'Asia/Tbilisi' });
+    return orderDateStr === todayStr;
+  });
+
+  const totalOrders = todayOrders.length;
+  let totalRevenue = 0;
+  let paidCount = 0;
+  let paidRevenue = 0;
+  let cashCount = 0;
+  let cashRevenue = 0;
+  let pendingCount = 0;
+
+  for (const o of todayOrders) {
+    const price = parseFloat(o.price) || 0;
+    totalRevenue += price;
+    if (o.status === 'CONFIRMED_PAID') {
+      paidCount++;
+      paidRevenue += price;
+    } else if (o.status === 'PAY_ON_DELIVERY' || (o.paymentMethod || '').toLowerCase().includes('ნაღდ')) {
+      cashCount++;
+      cashRevenue += price;
+    } else {
+      pendingCount++;
+    }
+  }
+
+  return `📊 *„ხრამუნას“ დღის ანგარიში (${todayStr})*
+━━━━━━━━━━━━━━━━━━━
+📦 *სულ შეკვეთა:* ${totalOrders}
+💰 *ჯამური შემოსავალი:* *${totalRevenue.toFixed(2)} ₾*
+
+💳 *საბანკო (ჩარიცხული):* ${paidCount} შეკვეთა (${paidRevenue.toFixed(2)} ₾) ✅
+💵 *ნაღდი (კურიერთან):* ${cashCount} შეკვეთა (${cashRevenue.toFixed(2)} ₾) 🛵
+⏳ *მოლოდინში (Pending):* ${pendingCount} შეკვეთა
+
+━━━━━━━━━━━━━━━━━━━
+⏰ *დრო:* ${now.toLocaleTimeString('ka-GE', { timeZone: 'Asia/Tbilisi' })}`;
+}
+
+/**
+ * Generates a clean, copy-pasteable Courier Dispatch Route Sheet.
+ */
+export function generateCourierDispatchList(orders = []) {
+  const now = new Date();
+  const dateStr = now.toLocaleDateString('ka-GE', { timeZone: 'Asia/Tbilisi' });
+
+  // Active orders ready for dispatch
+  const activeOrders = orders.filter(o => {
+    const isReadyStatus = ['CONFIRMED_PAID', 'PAY_ON_DELIVERY', 'READY_FOR_DELIVERY', 'PENDING_DELIVERY'].includes(o.status);
+    const hasDeliveryInfo = o.address && o.address !== 'არ არის მითითებული';
+    return (isReadyStatus || (o.status === 'PENDING' && o.phone)) && hasDeliveryInfo;
+  });
+
+  if (activeOrders.length === 0) {
+    return `📍 *საკურიერო მარშრუტი (${dateStr})*\n\nამ ეტაპზე გასაგზავნი შეკვეთები არ არის.`;
+  }
+
+  let text = `📍 *საკურიერო მარშრუტი (${dateStr})*\n━━━━━━━━━━━━━━━━━━━\n`;
+  let totalCashToCollect = 0;
+
+  activeOrders.forEach((o, idx) => {
+    const price = parseFloat(o.price) || 0;
+    const isPaid = o.status === 'CONFIRMED_PAID';
+    const isCash = !isPaid && ((o.paymentMethod || '').toLowerCase().includes('ნაღდ') || o.status === 'PAY_ON_DELIVERY');
+
+    let paymentBadge = '';
+    if (isPaid) {
+      paymentBadge = 'გადახდილია ✅';
+    } else if (isCash) {
+      paymentBadge = `ასაღებია: ${price.toFixed(2)}₾ 💵`;
+      totalCashToCollect += price;
+    } else {
+      paymentBadge = `ჩარიცხვა მოლოდინში (${price.toFixed(2)}₾) ⏳`;
+    }
+
+    const cleanPhone = (o.phone || '').replace(/[^\d+]/g, '');
+    const clientName = o.customerName || 'კლიენტი';
+    const notesStr = o.deliveryNotes ? ` (შენიშვნა: ${o.deliveryNotes})` : '';
+
+    text += `*${idx + 1}.* ${clientName} | 📞 \`${o.phone || 'ნომერი არაა'}\`\n` +
+      `📍 ${o.address}${notesStr}\n` +
+      `📦 ${o.product || 'პროდუქტი'} — *${paymentBadge}*\n\n`;
+  });
+
+  text += `━━━━━━━━━━━━━━━━━━━\n` +
+    `📦 *სულ ამანათი:* ${activeOrders.length}\n` +
+    `💵 *სულ ასაღები ნაღდი თანხა:* *${totalCashToCollect.toFixed(2)} ₾*`;
+
+  return text;
+}

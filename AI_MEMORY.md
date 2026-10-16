@@ -209,3 +209,19 @@
 * **Comment-to-DM Engine Polish (`src/services/commentMonitor.js`, `src/services/ai.js`):**
   - `buildFeedAuthorityPrompt`-ში შესწორდა Full Pack-ის 20%-იანი ეკონომიის სიმართლე (49.50₾ vs 62₾).
   - საჯარო კომენტარებიდან ამოღებულია ხელოვნური კლიშეები და მორგებულია ცოცხალ, ავთენტურ ხელოსნურ ქართულზე.
+## 18. Founder Command Center, კურიერის მარშრუტი & Meta Ads ატრიბუცია (Phase E)
+* **Telegram Founder Command Center (`src/services/telegram.js`, `src/server.js`):**
+  - Webhook endpoint: `POST /api/telegram-webhook` იღებს დამფუძნებლის შეტყობინებებს Telegram-იდან:
+    - `/today` ან `/stats`: დღის ფინანსური და შეკვეთების ანგარიში (ჩარიცხული vs ნაღდი).
+    - `/courier` ან `/dispatch`: მზა საკურიერო მარშრუტი (WhatsApp/SMS ფორმატში).
+    - `/orders`: ბოლო შეკვეთების სია და სტატუსები.
+  - **ინლაინ ღილაკები:** Telegram შეტყობინებიდანვე 1 დაჭერით ხდება შეკვეთის დადასტურება (`confirm_<id>` -> `CONFIRMED_PAID`) ან კურიერთან გატანილად მონიშვნა (`shipped_<id>` -> `OUT_FOR_DELIVERY`).
+  - **Daily Digest Cron:** `GET /api/cron/daily-digest` (21:00-ზე) უგზავნის დამფუძნებელს დღის ფინანსურ შეჯამებას.
+* **კურიერის მარშრუტის 1-კლიკიანი გენერაცია:**
+  - Dashboard API: `GET /api/dashboard/courier-sheet` აბრუნებს მზა, ფორმატირებულ საკურიერო სიას.
+* **Meta Ads Keyword & Referral Attribution Hook (`src/server.js`):**
+  - Webhook-ში ინტეგრირდა `webhookEvent.referral`-ის დამუშავება:
+    - `teeth` / `dental` / `თათ`: რეკლამიდან შემოსულს ხვდება კბილების წმენდისა და თათების პერსონალიზებული შეთავაზებით.
+    - `powder` / `pudra` / `picky` / `მადა`: ხვდება მადისაღმძვრელი პუდრის შეთავაზებით.
+    - `allergy` / `lung` / `ალერგი`: ხვდება ჰიპოალერგიული, დიეტური ფილტვის შეთავაზებით.
+    - `full_pack` / `ნაკრებ`: ხვდება სრული ოთხეულის 20%-იანი ეკონომიის შეთავაზებით.

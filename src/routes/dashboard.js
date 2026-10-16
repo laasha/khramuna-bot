@@ -491,4 +491,17 @@ router.post('/stock', (req, res) => {
   }
 });
 
+
+// 1-Click Courier Dispatch Route Sheet for SMS / WhatsApp
+router.get('/courier-sheet', async (req, res) => {
+  const orders = getOrders();
+  const { generateCourierDispatchList } = await import('../services/telegram.js');
+  const sheet = generateCourierDispatchList(orders);
+  res.json({
+    success: true,
+    sheet,
+    formattedText: sheet.replace(/\*/g, '').replace(/━━━━━━━━━━━━━━━━━━━/g, '---------------------------------')
+  });
+});
+
 export default router;

@@ -183,7 +183,7 @@ import {
   sendSenderAction,
 } from './services/facebook.js';
 import { saveOrderToGoogleSheet } from './services/sheets.js';
-import { notifyTelegramOrder, notifyTelegramReceipt, notifyTelegramAlert } from './services/telegram.js';
+import { notifyTelegramOrder, notifyTelegramReceipt, notifyTelegramAlert, generateDailyReport, generateCourierDispatchList } from './services/telegram.js';
 import { handleCommentAction, startCommentMonitor, checkNewComments } from './services/commentMonitor.js';
 import { checkAndSendPostDeliveryFollowUps } from './services/followUp.js';
 import { getOrders, getSession, getOrHydrateSession, getCustomerProfile, updateCustomerProfile, getUserLatestOrder, updateOrderStatus, pauseBotForUser, isBotPausedForUser, saveOrder, updateSession } from './services/storage.js';
@@ -546,6 +546,135 @@ app.get('/webhook', (req, res) => {
 /**
  * Meta Webhook Event Handler (Facebook Messenger incoming messages)
  */
+
+/**
+ * Telegram Founder Command Center Webhook
+ * Handles commands (/today, /courier, /orders, /help) and inline button callbacks from founder.
+ */
+app.post('/api/telegram-webhook', async (req, res) => {
+  const update = req.body;
+  const token = process.env.TELEGRAM_BOT_TOKEN || '8602396382:AAFiNvqT4SInU4VcIDSJmV31FdK-spMKm7M';
+  const founderChatId = process.env.TELEGRAM_CHAT_ID || '1317626946';
+
+  if (!update) return res.sendStatus(200);
+
+  // 1. Handle Inline Button Callbacks (e.g. confirm_ORD-123 or shipped_ORD-123)
+  if (update.callback_query) {
+    const cb = update.callback_query;
+    const data = cb.data || '';
+    const chatId = cb.message?.chat?.id;
+
+    if (data.startsWith('confirm_')) {
+      const orderId = data.replace('confirm_', '');
+      updateOrderStatus(orderId, 'CONFIRMED_PAID', 'Confirmed via Telegram button');
+      await fetch(`https://api.telegram.org/bot${token}/answerCallbackQuery`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ callback_query_id: cb.id, text: `შეკვეთა #${orderId} დადასტურებულია! ✅` })
+      }).catch(() => {});
+      await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, text: `✅ შეკვეთა #${orderId} წარმატებით დადასტურდა (CONFIRMED_PAID)!` })
+      }).catch(() => {});
+    } else if (data.startsWith('shipped_')) {
+      const orderId = data.replace('shipped_', '');
+      updateOrderStatus(orderId, 'OUT_FOR_DELIVERY', 'Marked shipped via Telegram button');
+      await fetch(`https://api.telegram.org/bot${token}/answerCallbackQuery`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ callback_query_id: cb.id, text: `შეკვეთა #${orderId} გადაეცა კურიერს! 🛵` })
+      }).catch(() => {});
+      await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ chat_id: chatId, text: `🛵 შეკვეთა #${orderId} გადაცემულია კურიერთან (OUT_FOR_DELIVERY)!` })
+      }).catch(() => {});
+    }
+    return res.sendStatus(200);
+  }
+
+  // 2. Handle Text Commands from Founder
+  const message = update.message;
+  if (!message || !message.text) return res.sendStatus(200);
+
+  const chatId = String(message.chat.id);
+  const text = message.text.trim();
+
+  // Security: only respond to Founder Chat ID
+  if (chatId !== String(founderChatId)) {
+    console.warn(`[Telegram Webhook] Unauthorized message from ${chatId}: "${text}"`);
+    return res.sendStatus(200);
+  }
+
+  const orders = getOrders();
+
+  if (text === '/today' || text === '/stats') {
+    const report = generateDailyReport(orders);
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: report, parse_mode: 'Markdown' })
+    }).catch(() => {});
+  } else if (text === '/courier' || text === '/dispatch') {
+    const sheet = generateCourierDispatchList(orders);
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: sheet, parse_mode: 'Markdown' })
+    }).catch(() => {});
+  } else if (text === '/orders') {
+    const recent = orders.slice(-5).reverse();
+    let reply = '📋 *ბოლო 5 შეკვეთა:*\n━━━━━━━━━━━━━━━━━━━\n';
+    recent.forEach((o, i) => {
+      reply += `*${i+1}. #${o.id}* — ${o.product} (${o.price}₾)\n👤 ${o.customerName || 'კლიენტი'} | ${o.status}\n📍 ${o.address}\n\n`;
+    });
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: reply, parse_mode: 'Markdown' })
+    }).catch(() => {});
+  } else if (text === '/help' || text === '/start') {
+    const helpText = `🐾 *ხრამუნა — Founder Command Center*
+━━━━━━━━━━━━━━━━━━━
+ხელმისაწვდომი ბრძანებები:
+• /today — დღის ფინანსური და შეკვეთების ანგარიში
+• /courier — კურიერის მზა მარშრუტი (WhatsApp/SMS ფორმატში)
+• /orders — ბოლო შეკვეთების სია და სტატუსები
+• /stats — გაყიდვების სტატისტიკა`;
+    await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: helpText, parse_mode: 'Markdown' })
+    }).catch(() => {});
+  }
+
+  return res.sendStatus(200);
+});
+
+/**
+ * Daily Evening Digest Cron (Triggered at 21:00 or manually)
+ */
+app.get('/api/cron/daily-digest', async (req, res) => {
+  const token = process.env.TELEGRAM_BOT_TOKEN || '8602396382:AAFiNvqT4SInU4VcIDSJmV31FdK-spMKm7M';
+  const founderChatId = process.env.TELEGRAM_CHAT_ID || '1317626946';
+
+  const orders = getOrders();
+  const report = generateDailyReport(orders);
+
+  await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      chat_id: founderChatId,
+      text: `🌙 *საღამოს შეჯამება — ხრამუნა*\n\n${report}`,
+      parse_mode: 'Markdown'
+    })
+  }).catch(() => {});
+
+  res.json({ success: true, message: 'Daily digest sent to Telegram!' });
+});
+
 app.post('/webhook', async (req, res) => {
   if (!verifyMetaSignature(req)) {
     return res.status(403).send('Invalid signature');
@@ -730,6 +859,32 @@ app.post('/webhook', async (req, res) => {
           }
 
           // 2. Handle Text Messages
+          
+          // 0. Meta Ads Referral & Keyword Attribution Hook
+          const referral = webhookEvent.referral || webhookEvent.postback?.referral;
+          if (referral) {
+            const adId = referral.ad_id || '';
+            const refParam = (referral.ref || '').toLowerCase();
+            console.log(`[Meta Ads Hook] Incoming lead from Ad ID ${adId}, ref="${refParam}" for user ${senderPsid}`);
+
+            let tailoredGreeting = '';
+            if (refParam.includes('teeth') || refParam.includes('dental') || refParam.includes('tathebi') || refParam.includes('თათ')) {
+              tailoredGreeting = 'გამარჯობა! 🐾 ჩვენს ხრაშუნა „დრაკონის თათებზე“ დაინტერესდით კბილების გასაწმენდად? სიამოვნებით მოგიყვებით — რა ჯიშის და ასაკის ცუგა გყავთ? ❤️';
+            } else if (refParam.includes('powder') || refParam.includes('pudra') || refParam.includes('picky') || refParam.includes('მადა')) {
+              tailoredGreeting = 'გამარჯობა! 🐾 თქვენი ცუგაც ჭირვეულობს მშრალ საჭმელზე? ჩვენი „ჯადოსნური პუდრა“ 100% ხორცის ბუნებრივი ტოპინგია, რომელიც საჭმელს საოცარ არომატს აძლევს. რომელი ჯიშის პატარა გყავთ? ✨';
+            } else if (refParam.includes('allergy') || refParam.includes('lung') || refParam.includes('ghrubeli') || refParam.includes('ალერგი')) {
+              tailoredGreeting = 'გამარჯობა! 🐾 ჩვენს ჰაეროვან, დიეტურ „ღრუბელზე“ (საქონლის ფილტვი) დაინტერესდით? ის სულ ~2.5% ცხიმს შეიცავს და იდეალურია ალერგიული და მგრძნობიარე კუჭის მქონე ცუგებისთვის ❤️ რა ჯიშის პატარა გყავთ?';
+            } else if (refParam.includes('full') || refParam.includes('pack') || refParam.includes('ოთხეულ')) {
+              tailoredGreeting = 'გამარჯობა! 🐾 ჩვენს სრულ ოთხეულზე (Full Pack) დაინტერესდით? 49.50₾-ში შედის ოთხივე პრემიუმ სასუსნავი (20%-იანი ეკონომიით) და მიტანაც უფასოა! 🎁 რა ჯიშის ცუგა გყავთ?';
+            }
+
+            if (tailoredGreeting) {
+              await sendMessengerMessage(senderPsid, tailoredGreeting);
+              updateSession(senderPsid, 'assistant', tailoredGreeting);
+              continue;
+            }
+          }
+
           const message = webhookEvent.message;
 
           // Handle Photo attachments (Smart Payment Receipt vs General Pet/Chat Photo)
