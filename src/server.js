@@ -630,7 +630,7 @@ app.post('/webhook', async (req, res) => {
             console.log(`[Messenger Funnel] User ${senderPsid} clicked payload: ${payload}`);
 
             if (payload === 'GET_STARTED') {
-            const welcome = 'გამარჯობა! 🐾 კეთილი იყოს თქვენი მობრძანება „ხრამუნაში“ — ჩვენ ვამზადებთ 100% ნატურალურ, ქართულ, გამომშრალ სასუსნავებს ბეწვიანი მეგობრებისთვის ❤️\n\nგაეცანით ჩვენს ასორტიმენტს ან მოგვწერეთ, რა ჯიშის და ასაკის ცუგა გყავთ:';
+            const welcome = 'გამარჯობა! 🐾 „ხრამუნაში“ საკუთარი ხელით ვამზადებთ 100% ნატურალურ გამომშრალ სასუსნავებს ცუგებისთვის ❤️\n\nდაათვალიერეთ ჩვენი ასორტიმენტი ან მომწერეთ, რა ჯიშის და ასაკის პატარა გყავთ — სიამოვნებით შეგირჩევთ:';
             await sendMessengerMessage(senderPsid, welcome);
             await sendProductCatalog(senderPsid);
             updateSession(senderPsid, 'assistant', welcome);
@@ -639,7 +639,7 @@ app.post('/webhook', async (req, res) => {
 
           if (payload === 'HUMAN_HANDOFF') {
             pauseBotForUser(senderPsid, 120);
-            const handoffMsg = 'გასაგებია! ❤️ ჩვენს გუნდს უკვე გადავეცი თქვენი შეტყობინება და მალევე პირადად მოგწერთ ჩვენი თანაგუნდელი.';
+            const handoffMsg = 'გასაგებია! ❤️ შეტყობინება გადავეცი ლაშას (დამფუძნებელს) და მალე პირადად შემოგეხმიანებათ.';
             await sendMessengerMessage(senderPsid, handoffMsg);
             updateSession(senderPsid, 'assistant', handoffMsg);
             await notifyTelegramAlert(
@@ -652,6 +652,37 @@ app.post('/webhook', async (req, res) => {
           if (payload === 'SHOW_CATALOG') {
               await sendMessengerMessage(senderPsid, 'გთავაზობთ ჩვენს 100% ნატურალურ ასორტიმენტს: 🐾');
               await sendProductCatalog(senderPsid);
+              continue;
+            }
+
+            
+            if (payload === 'RESTOCK_SAME_ORDER') {
+              const latestOrder = getUserLatestOrder(senderPsid);
+              if (latestOrder) {
+                const reorderText = `დიდი სიამოვნებით! 🐾 თქვენს წინა შეკვეთას (${latestOrder.product}) სიყვარულით გაგიმზადებთ.\n\nგთხოვთ დამიდასტუროთ — მისამართი (${latestOrder.address}) და ტელეფონი (${latestOrder.phone}) იგივე დავტოვოთ? ❤️`;
+                await sendMessengerMessage(senderPsid, reorderText);
+                updateSession(senderPsid, 'assistant', reorderText);
+              } else {
+                const reorderText = 'დიდი სიამოვნებით! 🐾 რომელ სასუსნავს ინებებთ ახალი პარტიიდან?';
+                await sendMessengerMessage(senderPsid, reorderText);
+                await sendProductCatalog(senderPsid);
+                updateSession(senderPsid, 'assistant', reorderText);
+              }
+              continue;
+            }
+
+            if (payload === 'RESTOCK_NEW_TASTE') {
+              const switchText = 'დიდი სიამოვნებით! 🐾 გაეცანით ჩვენს ასორტიმენტს და სიამოვნებით შეგირჩევთ ახალ გემოს:';
+              await sendMessengerMessage(senderPsid, switchText);
+              await sendProductCatalog(senderPsid);
+              updateSession(senderPsid, 'assistant', switchText);
+              continue;
+            }
+
+            if (payload === 'RESTOCK_STILL_HAVE') {
+              const stillText = 'გასაგებია! ❤️ გემრიელად მიირთვას თქვენმა პატარამ. როცა დაგჭირდებათ, ნებისმიერ დროს მოგვწერეთ ✨';
+              await sendMessengerMessage(senderPsid, stillText);
+              updateSession(senderPsid, 'assistant', stillText);
               continue;
             }
 
@@ -731,14 +762,14 @@ app.post('/webhook', async (req, res) => {
                     updateOrderStatus(latestOrder.id, 'CONFIRMED_PAID', `Verified ${ocrResult.amount || latestOrder.price}₾ via ${ocrResult.bank || 'Bank'} [ლ.ხ.]`);
                     const hasDeliveryDetails = latestOrder.address && latestOrder.address !== 'არ არის მითითებული' && latestOrder.phone && latestOrder.phone !== 'არ არის მითითებული';
                     if (hasDeliveryDetails) {
-                      receiptConfirm = `დიდი მადლობა! ❤️ გადარიცხვა${bankBadge}${amountBadge} დადასტურებულია! შეკვეთა მიღებულია და გადაეცა დასამზადებლად. კურიერი მოგართმევთ მითითებულ მისამართზე 🐾`;
+                      receiptConfirm = `დიდი მადლობა! ❤️ გადარიცხვა${bankBadge}${amountBadge} დადასტურებულია! შეკვეთა მივიღეთ და უკვე ვამზადებთ! კურიერი მოგართმევთ თქვენს მისამართზე 🐾`;
                     } else {
                       receiptConfirm = `დიდი მადლობა! ❤️ გადარიცხვა${bankBadge}${amountBadge} დადასტურებულია! გთხოვთ მოგვწეროთ თქვენი მისამართი და საკონტაქტო ნომერი, რომ შეკვეთა კურიერს გავატანოთ 🐾`;
                     }
                   } else {
                     const diff = (latestOrder.price - ocrResult.amount).toFixed(2);
                     updateOrderStatus(latestOrder.id, 'PARTIALLY_PAID', `Received ${ocrResult.amount}₾, expected ${latestOrder.price}₾ (missing ${diff}₾)`);
-                    receiptConfirm = `დიდი მადლობა! ❤️ თქვენი გადარიცხვა${bankBadge}${amountBadge} მივიღეთ. შეკვეთის თანხაა ${latestOrder.price}₾ (დარჩენილია ${diff}₾). გთხოვთ შეგვატყობინოთ ან გადმორიცხოთ დარჩენილი ნაწილი, რომ შეკვეთა გავუშვათ 🐾`;
+                    receiptConfirm = `დიდი მადლობა! ❤️ თქვენი გადარიცხვა${bankBadge}${amountBadge} მივიღეთ. შეკვეთის თანხაა ${latestOrder.price}₾ (დარჩენილია ${diff}₾). გთხოვთ შეგვატყობინოთ ან გადმორიცხოთ დარჩენილი ნაწილი, რომ შეკვეთა მოგიტანოთ 🐾`;
                   }
                 } else {
                   receiptConfirm = `დიდი მადლობა! ❤️ გადარიცხვის ქვითარი${bankBadge}${amountBadge} დამოწმებულია! გთხოვთ მოგვწეროთ მიტანის მისამართი და ტელეფონის ნომერი, რომ შეკვეთა კურიერს გავატანოთ 🐾`;
@@ -962,7 +993,7 @@ app.post('/webhook', async (req, res) => {
                   continue;
                 }
               }
-              const byeReply = 'მშვიდობით და ბედნიერ დღეს გისურვებთ! ❤️🐾 გაახარეთ თქვენი ოთხფეხა.';
+              const byeReply = 'მშვიდობით და ბედნიერ დღეს გისურვებთ! ❤️🐾 გაახარეთ თქვენი ცუგა.';
               await sendMessengerMessage(senderPsid, byeReply);
               updateSession(senderPsid, 'assistant', byeReply);
               continue;
@@ -1001,7 +1032,7 @@ app.post('/webhook', async (req, res) => {
                 } else if (latestOrder.status === 'OUT_FOR_DELIVERY' || latestOrder.status === 'DISPATCHED') {
                   trackingReply = `თქვენი შეკვეთა (#${latestOrder.id}) კურიერს უკვე თან აქვს და გზაშია! 🚗 მალე დაგიკავშირდებათ${phoneSnippet} 🐾`;
                 } else if (latestOrder.status === 'DELIVERED') {
-                  trackingReply = `თქვენი შეკვეთა (#${latestOrder.id} — ${latestOrder.product}) უკვე ჩაბარებულია ❤️ იმედია თქვენი ოთხფეხა მეგობარი კმაყოფილია! თუ კიდევ დაგჭირდეთ რამე, ნებისმიერ დროს მოგვწერეთ 🐾`;
+                  trackingReply = `თქვენი შეკვეთა (#${latestOrder.id} — ${latestOrder.product}) უკვე ჩაბარებულია ❤️ იმედია თქვენს ცუგას ძალიან მოეწონა! თუ კიდევ დაგჭირდეთ რამე, ნებისმიერ დროს მომწერეთ 🐾`;
                 } else {
                   trackingReply = `თქვენი შეკვეთა (#${latestOrder.id} — ${latestOrder.product}) მიღებულია და მზადების პროცესშია 🐾 კურიერი მოგართმევთ 24-48 საათში. თუ რამე დეტალის დაზუსტება გსურთ, სიამოვნებით დაგეხმარებით ❤️`;
                 }
