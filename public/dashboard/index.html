@@ -234,6 +234,168 @@
       .chat-list { height: 300px; }
       .chat-view { height: 500px; }
     }
+  
+    /* Modal Backdrop & Dialog */
+    .modal-backdrop {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
+      background: rgba(0, 0, 0, 0.78);
+      backdrop-filter: blur(8px);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 16px;
+    }
+    .modal-backdrop.show { display: flex; animation: fadeIn 0.15s ease-out; }
+    .modal-dialog {
+      background: #0f172a;
+      border: 1px solid rgba(255, 255, 255, 0.15);
+      border-radius: 16px;
+      box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8), 0 0 35px rgba(245, 158, 11, 0.15);
+      width: 100%;
+      max-width: 680px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+    .modal-header {
+      padding: 18px 24px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.95);
+    }
+    .modal-title { font-size: 18px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 10px; }
+    .modal-close {
+      background: transparent;
+      border: none;
+      color: var(--text-muted);
+      font-size: 22px;
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px;
+    }
+    .modal-close:hover { color: #fff; }
+    .modal-body {
+      padding: 24px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .modal-footer {
+      padding: 16px 24px;
+      border-top: 1px solid rgba(255, 255, 255, 0.08);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: rgba(15, 23, 42, 0.95);
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .form-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 14px;
+    }
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .form-group.full-width {
+      grid-column: 1 / -1;
+    }
+    .form-group label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .form-control {
+      background: var(--surface);
+      border: 1px solid var(--card-border);
+      border-radius: 8px;
+      color: #fff;
+      padding: 10px 12px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.15s;
+    }
+    .form-control:focus {
+      border-color: var(--amber);
+    }
+    .alert-banner-modal {
+      border-radius: 10px;
+      padding: 12px 14px;
+      font-size: 13px;
+      line-height: 1.4;
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+    }
+    .alert-warning {
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.35);
+      color: #fde68a;
+    }
+    .alert-info {
+      background: rgba(59, 130, 246, 0.12);
+      border: 1px solid rgba(59, 130, 246, 0.35);
+      color: #bfdbfe;
+    }
+    .order-filter-chip {
+      background: var(--surface);
+      border: 1px solid var(--card-border);
+      color: var(--text-muted);
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 13px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.15s;
+    }
+    .order-filter-chip:hover { color: #fff; border-color: rgba(255,255,255,0.25); }
+    .order-filter-chip.active {
+      background: var(--amber);
+      color: #000;
+      border-color: var(--amber);
+      font-weight: 700;
+    }
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.18);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      color: #fca5a5;
+    }
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.3);
+      color: #fff;
+    }
+    .btn-icon {
+      padding: 6px 10px;
+      font-size: 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      border: 1px solid var(--card-border);
+      background: var(--surface);
+      color: #fff;
+      text-decoration: none;
+    }
+    .btn-icon:hover {
+      background: var(--surface-light);
+      border-color: var(--amber);
+    }
+
   </style>
 </head>
 <body>
@@ -386,35 +548,51 @@
     </div>
 
     <!-- TAB 4: ORDERS & CRM -->
+    
+    <!-- TAB 4: ORDERS & CRM -->
     <div class="tab-pane" id="tab-orders">
       <div class="panel">
-        <div class="panel-header">
-          <div class="panel-title">📦 შეკვეთების სრული ბაზა</div>
-          <button class="btn btn-secondary" onclick="downloadOrdersCsv()">📥 CSV ექსპორტი (Excel)</button>
+        <div class="panel-header" style="flex-wrap: wrap; gap: 12px;">
+          <div>
+            <div class="panel-title">📦 შეკვეთების სრული ბაზა & მართვა</div>
+            <div style="font-size: 13px; color: var(--text-muted); margin-top: 4px;">შეკვეთების დეტალები, რედაქტირება, კურიერისთვის დაზუსტება და სტატუსები</div>
+          </div>
+          <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+            <input type="text" id="orderSearchInput" placeholder="ძებნა კლიენტით, ნომრით ან ქალაქით..." class="chat-input" style="width: 260px;" oninput="filterOrders()">
+            <button class="btn btn-secondary" onclick="downloadOrdersCsv()">📥 CSV (Excel)</button>
+          </div>
         </div>
+
+        <!-- Filter Chips -->
+        <div style="display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; align-items: center;">
+          <span style="font-size: 12px; color: var(--text-muted); font-weight: 600;">ფილტრი:</span>
+          <button class="order-filter-chip active" id="chip-ALL" onclick="setOrdersFilter('ALL')">ყველა (<span id="cntAll">0</span>)</button>
+          <button class="order-filter-chip" id="chip-READY" onclick="setOrdersFilter('READY')">🛵 გასაგზავნი / აქტიური (<span id="cntReady">0</span>)</button>
+          <button class="order-filter-chip" id="chip-AWAITING" onclick="setOrdersFilter('AWAITING')">🟡 გადარიცხვის მოლოდინში (<span id="cntAwaiting">0</span>)</button>
+          <button class="order-filter-chip" id="chip-DELIVERED" onclick="setOrdersFilter('DELIVERED')">✅ ჩაბარებული (<span id="cntDelivered">0</span>)</button>
+        </div>
+
         <div style="overflow-x: auto;">
           <table>
             <thead>
               <tr>
                 <th>ID / თარიღი</th>
-                <th>მომხმარებელი</th>
-                <th>ტელეფონი</th>
-                <th>მისამართი & ქალაქი</th>
+                <th>მომხმარებელი & ტელეფონი</th>
+                <th>მიტანის მისამართი & შენიშვნა</th>
                 <th>პროდუქტი</th>
                 <th>თანხა</th>
-                <th>გადახდა</th>
-                <th>სტატუსის შეცვლა</th>
+                <th>გადახდა & სტატუსი</th>
+                <th>მოქმედება</th>
               </tr>
             </thead>
             <tbody id="allOrdersTable">
-              <tr><td colspan="8" style="text-align:center; color:var(--text-muted);">იტვირთება...</td></tr>
+              <tr><td colspan="7" style="text-align:center; color:var(--text-muted);">იტვირთება...</td></tr>
             </tbody>
           </table>
         </div>
       </div>
     </div>
-
-    <!-- TAB 5: PET CRM PROFILES -->
+<!-- TAB 5: PET CRM PROFILES -->
     <div class="tab-pane" id="tab-profiles">
       <div class="panel">
         <div class="panel-header">
@@ -574,17 +752,70 @@
     }
 
     // Load Orders
+    let currentOrderFilter = 'ALL';
+    let currentSelectedOrder = null;
+
     async function loadOrders() {
       const data = await apiFetch('/api/dashboard/orders');
       if (data.success && data.orders) {
         allOrdersData = data.orders;
-        renderOrdersTable(data.orders);
+        updateOrderCounts(data.orders);
+        filterOrders();
         renderOverviewOrders(data.orders.slice(0, 5));
       }
     }
 
+    function updateOrderCounts(orders) {
+      const cntAll = orders.length;
+      const cntReady = orders.filter(o => o.status === 'CONFIRMED_PAID' || o.status === 'PAY_ON_DELIVERY').length;
+      const cntAwaiting = orders.filter(o => o.status === 'AWAITING_PAYMENT' || o.status === 'PENDING').length;
+      const cntDelivered = orders.filter(o => o.status === 'DELIVERED').length;
+
+      const elAll = document.getElementById('cntAll'); if (elAll) elAll.textContent = cntAll;
+      const elReady = document.getElementById('cntReady'); if (elReady) elReady.textContent = cntReady;
+      const elAwaiting = document.getElementById('cntAwaiting'); if (elAwaiting) elAwaiting.textContent = cntAwaiting;
+      const elDelivered = document.getElementById('cntDelivered'); if (elDelivered) elDelivered.textContent = cntDelivered;
+    }
+
+    function setOrdersFilter(filter) {
+      currentOrderFilter = filter;
+      document.querySelectorAll('.order-filter-chip').forEach(c => c.classList.remove('active'));
+      const activeChip = document.getElementById('chip-' + filter);
+      if (activeChip) activeChip.classList.add('active');
+      filterOrders();
+    }
+
+    function filterOrders() {
+      const query = (document.getElementById('orderSearchInput')?.value || '').toLowerCase().trim();
+      let filtered = (allOrdersData || []).filter(o => {
+        if (currentOrderFilter === 'READY') {
+          return o.status === 'CONFIRMED_PAID' || o.status === 'PAY_ON_DELIVERY';
+        }
+        if (currentOrderFilter === 'AWAITING') {
+          return o.status === 'AWAITING_PAYMENT' || o.status === 'PENDING';
+        }
+        if (currentOrderFilter === 'DELIVERED') {
+          return o.status === 'DELIVERED';
+        }
+        return true;
+      });
+
+      if (query) {
+        filtered = filtered.filter(o =>
+          (o.customerName || '').toLowerCase().includes(query) ||
+          (o.phone || '').includes(query) ||
+          (o.address || '').toLowerCase().includes(query) ||
+          (o.city || '').toLowerCase().includes(query) ||
+          (o.product || '').toLowerCase().includes(query)
+        );
+      }
+
+      renderOrdersTable(filtered);
+    }
+
     function renderOverviewOrders(orders) {
       const tbody = document.getElementById('overviewOrdersTable');
+      if (!tbody) return;
       if (!orders.length) {
         tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; color:var(--text-muted);">შეკვეთები ჯერ არ არის</td></tr>';
         return;
@@ -596,51 +827,216 @@
           <td>${escapeHtml(o.phone || '-')}</td>
           <td>${escapeHtml(o.product || '-')}</td>
           <td><strong>${o.price || 0}₾</strong></td>
-          <td><span class="status-badge ${getStatusClass(o.status)}">${formatStatus(o.status)}</span></td>
+          <td>${getOrderStatusBadge(o.status)}</td>
         </tr>
       `).join('');
+    }
+
+    function getOrderStatusBadge(status) {
+      if (status === 'CONFIRMED_PAID') return '<span style="background:rgba(16,185,129,0.15); color:#34d399; border:1px solid rgba(16,185,129,0.3); padding:3px 8px; border-radius:12px; font-size:11px; font-weight:700;">🟢 გადახდილია</span>';
+      if (status === 'PAY_ON_DELIVERY') return '<span style="background:rgba(59,130,246,0.15); color:#60a5fa; border:1px solid rgba(59,130,246,0.3); padding:3px 8px; border-radius:12px; font-size:11px; font-weight:700;">🔵 ნაღდი კურიერთან</span>';
+      if (status === 'AWAITING_PAYMENT' || status === 'PENDING') return '<span style="background:rgba(245,158,11,0.15); color:#fbbf24; border:1px solid rgba(245,158,11,0.3); padding:3px 8px; border-radius:12px; font-size:11px; font-weight:700;">🟡 გადარიცხვის მოლოდინში</span>';
+      if (status === 'DELIVERED') return '<span style="background:rgba(168,85,247,0.15); color:#c084fc; border:1px solid rgba(168,85,247,0.3); padding:3px 8px; border-radius:12px; font-size:11px; font-weight:700;">🟣 ჩაბარებულია</span>';
+      if (status === 'CANCELLED') return '<span style="background:rgba(148,163,184,0.15); color:#94a3b8; border:1px solid rgba(148,163,184,0.3); padding:3px 8px; border-radius:12px; font-size:11px;">⚪ გაუქმებული</span>';
+      return `<span style="font-size:11px;">${status}</span>`;
     }
 
     function renderOrdersTable(orders) {
       const tbody = document.getElementById('allOrdersTable');
+      if (!tbody) return;
       if (!orders.length) {
-        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; color:var(--text-muted);">შეკვეთები ჯერ არ არის</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; color:var(--text-muted); padding:24px;">შეკვეთები არ მოიძებნა</td></tr>';
         return;
       }
-      tbody.innerHTML = orders.map(o => `
-        <tr>
-          <td><span style="font-family:monospace; font-size:11px;">#${(o.id || '').substring(0,6)}</span><br><span style="font-size:11px; color:var(--text-muted);">${formatDate(o.createdAt)}</span></td>
-          <td><strong>${escapeHtml(o.customerName || 'უცნობი')}</strong></td>
-          <td><a href="tel:${o.phone}" style="color:var(--amber); font-weight:600; text-decoration:none;">${escapeHtml(o.phone || '-')}</a></td>
-          <td>${escapeHtml(o.city || '')} ${escapeHtml(o.address || '-')}</td>
-          <td><strong>${escapeHtml(o.product || '-')}</strong></td>
-          <td><strong style="color:var(--emerald);">${o.price || 0}₾</strong></td>
-          <td><span style="font-size:12px;">${escapeHtml(o.paymentMethod || 'გადარიცხვა')}</span></td>
-          <td>
-            <select onchange="changeOrderStatus('${o.id}', this.value)" style="background:var(--surface); color:#fff; border:1px solid var(--card-border); padding:6px 10px; border-radius:8px; font-size:12px;">
-              <option value="PENDING" ${o.status==='PENDING'?'selected':''}>⏳ მოლოდინში</option>
-              <option value="CONFIRMED_PAID" ${o.status==='CONFIRMED_PAID'?'selected':''}>✅ გადახდილია</option>
-              <option value="DELIVERED" ${o.status==='DELIVERED'?'selected':''}>🛵 ჩაბარებულია</option>
-              <option value="CANCELLED" ${o.status==='CANCELLED'?'selected':''}>❌ გაუქმებულია</option>
-            </select>
-          </td>
-        </tr>
-      `).join('');
+
+      tbody.innerHTML = orders.map(o => {
+        const hasWarning = o.status === 'AWAITING_PAYMENT' || (o.deliveryNotes && o.deliveryNotes.includes('⚠️'));
+        const notesSnippet = o.deliveryNotes ? escapeHtml(o.deliveryNotes) : '';
+
+        return `
+          <tr style="${o.status === 'AWAITING_PAYMENT' ? 'background:rgba(245,158,11,0.04);' : ''}">
+            <td>
+              <span style="font-family:monospace; font-size:11px; color:var(--amber);">#${(o.id || '').substring(0,8)}</span><br>
+              <span style="font-size:11px; color:var(--text-muted);">${formatDate(o.createdAt)}</span>
+            </td>
+            <td>
+              <strong>${escapeHtml(o.customerName || 'უცნობი')}</strong><br>
+              <a href="tel:${o.phone}" style="color:var(--amber); font-weight:600; text-decoration:none; font-size:13px;">📞 ${escapeHtml(o.phone || '-')}</a>
+            </td>
+            <td style="max-width:280px;">
+              <div style="font-weight:600; color:#fff;">${escapeHtml(o.city || '')} ${escapeHtml(o.address || '-')}</div>
+              ${notesSnippet ? `<div style="font-size:11px; color:${hasWarning ? '#fcd34d' : 'var(--text-muted)'}; margin-top:3px; line-height:1.3;">${notesSnippet}</div>` : ''}
+            </td>
+            <td>
+              <span style="font-size:13px; font-weight:600;">${escapeHtml(o.product || '-')}</span>
+            </td>
+            <td>
+              <strong style="color:var(--emerald); font-size:15px;">${o.price || 0}₾</strong>
+            </td>
+            <td>
+              <div style="margin-bottom:4px;">${getOrderStatusBadge(o.status)}</div>
+              <span style="font-size:11px; color:var(--text-muted);">${escapeHtml(o.paymentMethod || 'გადარიცხვა')}</span>
+            </td>
+            <td>
+              <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                <button class="btn-icon" onclick="openOrderModal('${o.id}')" title="დეტალები & რედაქტირება">✏️ რედაქტირება</button>
+                <button class="btn-icon" onclick="copyCourierCard('${o.id}')" title="კურიერის ბარათის კოპირება">📋 კურიერს</button>
+                <button class="btn-icon" onclick="deleteOrderPrompt('${o.id}')" title="შეკვეთის წაშლა" style="color:#f87171;">🗑️</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
     }
 
-    async function changeOrderStatus(orderId, newStatus) {
+    function buildCourierText(o) {
+      if (!o) return '';
+      return `📦 ხრამუნა • შეკვეთა #${o.id || ''}
+👤 მიმღები: ${o.customerName || 'უცნობი'}
+📞 ტელეფონი: ${o.phone || ''}
+📍 მისამართი: ${o.city || ''}, ${o.address || ''}
+🛍️ პროდუქტი: ${o.product || ''}
+💰 თანხა: ${o.price || 0}₾ (${o.paymentMethod || ''})
+🐾 ცუგა: ${o.petInfo || '-'}
+📝 შენიშვნა კურიერს: ${o.deliveryNotes || 'სტანდარტული მიტანა'}`;
+    }
+
+    function copyCourierCard(orderId) {
+      const order = (allOrdersData || []).find(o => o.id === orderId);
+      if (!order) return;
+      const text = buildCourierText(order);
+      navigator.clipboard.writeText(text).then(() => {
+        alert('📋 კურიერის ბარათი დაკოპირდა ბუფერში:\n\n' + text);
+      }).catch(() => {
+        prompt('დააკოპირეთ კურიერის ტექსტი:', text);
+      });
+    }
+
+    function openOrderModal(orderId) {
+      const order = (allOrdersData || []).find(o => o.id === orderId);
+      if (!order) return;
+      currentSelectedOrder = order;
+
+      document.getElementById('editOrderId').value = order.id || '';
+      document.getElementById('editUserId').value = order.userId || '';
+      document.getElementById('modalOrderIdBadge').textContent = '#' + (order.id || '');
+      document.getElementById('editCustomerName').value = order.customerName || '';
+      document.getElementById('editPhone').value = order.phone || '';
+      document.getElementById('btnModalCall').href = 'tel:' + (order.phone || '');
+      document.getElementById('editCity').value = order.city || '';
+      document.getElementById('editAddress').value = order.address || '';
+      document.getElementById('editProduct').value = order.product || '';
+      document.getElementById('editPrice').value = order.price || 0;
+      document.getElementById('editPaymentMethod').value = order.paymentMethod || '';
+      document.getElementById('editStatus').value = order.status || 'PENDING';
+      document.getElementById('editPetInfo').value = order.petInfo || '';
+      document.getElementById('editDeliveryNotes').value = order.deliveryNotes || '';
+
+      // Warning Banner
+      const warnBox = document.getElementById('modalWarningBanner');
+      const warnText = document.getElementById('modalWarningText');
+      if (order.status === 'AWAITING_PAYMENT') {
+        warnBox.style.display = 'flex';
+        warnText.innerHTML = '<strong>ყურადღება:</strong> შეკვეთა ჯერ არ არის გაფორმებული/დადასტურებული! თანხა არ არის ჩარიცხული. არ გაატანოთ კურიერს ქვითრის მიღებამდე.';
+      } else if (order.deliveryNotes && order.deliveryNotes.includes('⚠️')) {
+        warnBox.style.display = 'flex';
+        warnText.innerHTML = '<strong>კურიერის გაფრთხილება:</strong> ' + escapeHtml(order.deliveryNotes);
+      } else {
+        warnBox.style.display = 'none';
+      }
+
+      // Courier Preview
+      document.getElementById('modalCourierPreview').textContent = buildCourierText(order);
+
+      // Show Modal
+      document.getElementById('orderModal').classList.add('show');
+    }
+
+    function closeOrderModal() {
+      document.getElementById('orderModal').classList.remove('show');
+      currentSelectedOrder = null;
+    }
+
+    function copyCurrentModalCourierCard() {
+      const text = document.getElementById('modalCourierPreview').textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        alert('📋 კურიერის ბარათი დაკოპირდა!');
+      }).catch(() => {
+        prompt('დააკოპირეთ ტექსტი:', text);
+      });
+    }
+
+    function openChatFromModal() {
+      const userId = document.getElementById('editUserId').value;
+      const custName = document.getElementById('editCustomerName').value;
+      closeOrderModal();
+      switchTab('chats');
+      if (userId) {
+        openChat(userId, custName);
+      }
+    }
+
+    async function saveOrderDetails() {
+      const orderId = document.getElementById('editOrderId').value;
+      if (!orderId) return;
+
+      const payload = {
+        customerName: document.getElementById('editCustomerName').value.trim(),
+        phone: document.getElementById('editPhone').value.trim(),
+        city: document.getElementById('editCity').value.trim(),
+        address: document.getElementById('editAddress').value.trim(),
+        product: document.getElementById('editProduct').value.trim(),
+        price: Number(document.getElementById('editPrice').value) || 0,
+        paymentMethod: document.getElementById('editPaymentMethod').value.trim(),
+        status: document.getElementById('editStatus').value,
+        petInfo: document.getElementById('editPetInfo').value.trim(),
+        deliveryNotes: document.getElementById('editDeliveryNotes').value.trim()
+      };
+
       try {
-        const res = await apiFetch(`/api/dashboard/orders/${orderId}/status`, {
+        const res = await apiFetch(`/api/dashboard/orders/${orderId}/update`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ status: newStatus })
+          body: JSON.stringify(payload)
+        });
+
+        if (res.success) {
+          closeOrderModal();
+          await loadOrders();
+          await loadStats();
+          alert('✅ შეკვეთის მონაცემები წარმატებით განახლდა!');
+        } else {
+          alert('შეცდომა: ' + (res.error || 'შენახვა ვერ მოხერხდა'));
+        }
+      } catch (err) {
+        alert('სერვერთან კავშირის შეცდომა');
+      }
+    }
+
+    async function deleteCurrentOrder() {
+      const orderId = document.getElementById('editOrderId').value;
+      if (!orderId) return;
+      deleteOrderPrompt(orderId);
+    }
+
+    async function deleteOrderPrompt(orderId) {
+      if (!confirm('ნამდვილად გსურთ შეკვეთის წაშლა #' + orderId + '? ეს მოქმედება შეუქცევადია.')) {
+        return;
+      }
+      try {
+        const res = await apiFetch(`/api/dashboard/orders/${orderId}`, {
+          method: 'DELETE'
         });
         if (res.success) {
-          loadOrders();
-          loadStats();
+          closeOrderModal();
+          await loadOrders();
+          await loadStats();
+          alert('🗑️ შეკვეთა წაიშალა');
+        } else {
+          alert('შეცდომა: ' + (res.error || 'წაშლა ვერ მოხერხდა'));
         }
-      } catch (e) {
-        alert('სტატუსის განახლება ვერ მოხერხდა');
+      } catch (err) {
+        alert('სერვერთან კავშირის შეცდომა');
       }
     }
 
@@ -1085,5 +1481,107 @@
       return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
   </script>
+
+  <!-- ORDER DETAIL & EDIT MODAL -->
+  <div class="modal-backdrop" id="orderModal" onclick="if(event.target===this) closeOrderModal()">
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <div class="modal-title">
+          <span>📦 შეკვეთის დეტალები & რედაქტირება</span>
+          <span id="modalOrderIdBadge" style="font-family:monospace; font-size:13px; color:var(--amber);"></span>
+        </div>
+        <button class="modal-close" onclick="closeOrderModal()">&times;</button>
+      </div>
+
+      <div class="modal-body">
+        <!-- Warning Banners -->
+        <div id="modalWarningBanner" style="display:none;" class="alert-banner-modal alert-warning">
+          <span>⚠️</span>
+          <div id="modalWarningText"></div>
+        </div>
+
+        <input type="hidden" id="editOrderId">
+        <input type="hidden" id="editUserId">
+
+        <div class="form-grid">
+          <div class="form-group">
+            <label>მომხმარებლის სახელი</label>
+            <input type="text" id="editCustomerName" class="form-control" placeholder="მაგ. მელისა მელისა">
+          </div>
+          <div class="form-group">
+            <label>ტელეფონის ნომერი</label>
+            <div style="display:flex; gap:6px;">
+              <input type="text" id="editPhone" class="form-control" placeholder="568xxxxxx">
+              <a id="btnModalCall" href="#" class="btn-icon" title="დარეკვა" style="padding:10px 14px;">📞</a>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>ქალაქი / რეგიონი</label>
+            <input type="text" id="editCity" class="form-control" placeholder="თბილისი, ბათუმი, სამტრედია...">
+          </div>
+          <div class="form-group">
+            <label>სტატუსი</label>
+            <select id="editStatus" class="form-control">
+              <option value="AWAITING_PAYMENT">🟡 გადარიცხვის მოლოდინში (არ გაფორმებულა)</option>
+              <option value="CONFIRMED_PAID">🟢 გადახდილია (საქ. ფოსტით/კურიერით გასაგზავნი)</option>
+              <option value="PAY_ON_DELIVERY">🔵 ნაღდი კურიერთან (გასაგზავნი)</option>
+              <option value="DELIVERED">🟣 ჩაბარებულია</option>
+              <option value="CANCELLED">⚪ გაუქმებული</option>
+            </select>
+          </div>
+
+          <div class="form-group full-width">
+            <label>მიტანის ზუსტი მისამართი (კურიერისთვის)</label>
+            <input type="text" id="editAddress" class="form-control" placeholder="უბანი, ქუჩა, კორპუსი, სადარბაზო, ბინა...">
+          </div>
+
+          <div class="form-group">
+            <label>პროდუქტი</label>
+            <input type="text" id="editProduct" class="form-control" placeholder="მაგ. ჯადოსნური პუდრა (40გ)">
+          </div>
+          <div class="form-group">
+            <label>ჯამური თანხა (₾)</label>
+            <input type="number" step="0.5" id="editPrice" class="form-control" placeholder="17">
+          </div>
+
+          <div class="form-group">
+            <label>გადახდის მეთოდი</label>
+            <input type="text" id="editPaymentMethod" class="form-control" placeholder="ნაღდი კურიერთან / საბანკო გადარიცხვა">
+          </div>
+          <div class="form-group">
+            <label>ინფორმაცია ცუგაზე (ჯიში, ალერგია)</label>
+            <input type="text" id="editPetInfo" class="form-control" placeholder="პუდელი • ალერგიული დერმატიტი">
+          </div>
+
+          <div class="form-group full-width">
+            <label>კურიერის შენიშვნა & მიტანის დრო</label>
+            <textarea id="editDeliveryNotes" class="form-control" rows="3" placeholder="მაგ. ⚠️ 16:00 საათამდეა სახლში! დარეკეთ 20 წუთით ადრე..."></textarea>
+          </div>
+        </div>
+
+        <!-- Courier Card Preview -->
+        <div style="background:rgba(0,0,0,0.3); border:1px solid rgba(255,255,255,0.08); border-radius:10px; padding:12px;">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+            <span style="font-size:12px; font-weight:700; color:var(--text-muted); text-transform:uppercase;">📋 კურიერის ბარათი (გასაგზავნი ტექსტი)</span>
+            <button class="btn-icon" type="button" onclick="copyCurrentModalCourierCard()">📋 ტექსტის დაკოპირება</button>
+          </div>
+          <pre id="modalCourierPreview" style="font-family:monospace; font-size:12px; color:#cbd5e1; white-space:pre-wrap; margin:0; line-height:1.4;"></pre>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn btn-danger" onclick="deleteCurrentOrder()">🗑️ შეკვეთის წაშლა</button>
+          <button type="button" class="btn btn-secondary" onclick="openChatFromModal()">💬 ჩათის გახსნა</button>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button type="button" class="btn btn-secondary" onclick="closeOrderModal()">დახურვა</button>
+          <button type="button" class="btn btn-primary" onclick="saveOrderDetails()">💾 შენახვა</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </body>
 </html>

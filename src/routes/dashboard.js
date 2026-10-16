@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 import {
   getOrders,
   updateOrderStatus,
+  updateOrder,
+  deleteOrder,
   getCustomerProfile,
   pauseBotForUser,
   isBotPausedForUser,
@@ -101,6 +103,28 @@ router.get('/orders', (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// Edit full order details
+router.put('/orders/:id', (req, res) => {
+  const { id } = req.params;
+  const updated = updateOrder(id, req.body || {});
+  if (!updated) return res.status(404).json({ error: 'შეკვეთა ვერ მოიძებნა' });
+  res.json({ success: true, order: updated });
+});
+
+router.post('/orders/:id/update', (req, res) => {
+  const { id } = req.params;
+  const updated = updateOrder(id, req.body || {});
+  if (!updated) return res.status(404).json({ error: 'შეკვეთა ვერ მოიძებნა' });
+  res.json({ success: true, order: updated });
+});
+
+router.delete('/orders/:id', (req, res) => {
+  const { id } = req.params;
+  const deleted = deleteOrder(id);
+  if (!deleted) return res.status(404).json({ error: 'შეკვეთა ვერ მოიძებნა' });
+  res.json({ success: true, message: 'შეკვეთა წარმატებით წაიშალა' });
 });
 
 router.post('/orders/:id/status', (req, res) => {

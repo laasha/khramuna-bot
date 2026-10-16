@@ -420,3 +420,45 @@ export function isBotPausedForUser(userId) {
 export function unpauseBotForUser(userId) {
   if (userId) humanPauses.delete(userId);
 }
+
+/**
+ * Updates full order details (customerName, phone, address, product, price, status, deliveryNotes, etc.)
+ */
+export function updateOrder(orderId, updateFields = {}) {
+  const orders = readJsonFile(ORDERS_FILE, []);
+  const order = orders.find((o) => o.id === orderId);
+  if (!order) return null;
+
+  if (updateFields.customerName !== undefined) order.customerName = updateFields.customerName;
+  if (updateFields.phone !== undefined) order.phone = updateFields.phone;
+  if (updateFields.city !== undefined) order.city = updateFields.city;
+  if (updateFields.address !== undefined) order.address = updateFields.address;
+  if (updateFields.product !== undefined) order.product = updateFields.product;
+  if (updateFields.price !== undefined) order.price = Number(updateFields.price) || 0;
+  if (updateFields.paymentMethod !== undefined) order.paymentMethod = updateFields.paymentMethod;
+  if (updateFields.status !== undefined) order.status = updateFields.status;
+  if (updateFields.deliveryNotes !== undefined) order.deliveryNotes = updateFields.deliveryNotes;
+  if (updateFields.petInfo !== undefined) order.petInfo = updateFields.petInfo;
+  order.updatedAt = new Date().toISOString();
+
+  writeJsonFile(ORDERS_FILE, orders);
+  syncOrdersToCsv();
+  console.log('[Storage] Order updated successfully:', orderId, updateFields);
+  return order;
+}
+
+/**
+ * Deletes an order permanently from storage
+ */
+export function deleteOrder(orderId) {
+  let orders = readJsonFile(ORDERS_FILE, []);
+  const beforeCount = orders.length;
+  orders = orders.filter((o) => o.id !== orderId);
+  if (orders.length !== beforeCount) {
+    writeJsonFile(ORDERS_FILE, orders);
+    syncOrdersToCsv();
+    console.log('[Storage] Order deleted successfully:', orderId);
+    return true;
+  }
+  return false;
+}
