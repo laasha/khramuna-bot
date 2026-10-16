@@ -704,7 +704,7 @@ function enforceTbilisiDeliveryGuard(parsed) {
 
   for (const pattern of regionalPatterns) {
     if (pattern.test(targetText)) {
-      if (isNamedStreetInTbilisi) return parsed;
+      if (isNamedStreetInTbilisi && hasTbilisiDistrict) return parsed;
       console.log('[TbilisiDeliveryGuard] Intercepted regional order attempt:', targetText);
       parsed.isOrderReady = false;
       parsed.order = null;
