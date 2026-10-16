@@ -131,6 +131,24 @@ router.post('/orders/:id/status', (req, res) => {
   const { id } = req.params;
   const { status, notes } = req.body || {};
   if (!status) return res.status(400).json({ error: 'Status is required' });
+router.post('/orders/:id/send-followup', async (req, res) => {
+  const { id } = req.params;
+  const orders = getOrders();
+  const order = orders.find(o => o.id === id);
+  if (!order) return res.status(404).json({ error: 'შეკვეთა ვერ მოიძებნა' });
+
+  if (order.status !== 'DELIVERED') {
+    return res.status(400).json({ error: 'მოკითხვა იგზავნება მხოლოდ რეალურად ჩაბარებულ (DELIVERED) შეკვეთებზე!' });
+  }
+
+  const success = await sendSingleOrderFollowUp(order);
+  if (!success) {
+    return res.status(500).json({ error: 'მოკითხვის გაგზავნა ვერ მოხერხდა (შესაძლოა მომხმარებლის ჩათი მიუწვდომელია)' });
+  }
+
+  res.json({ success: true, message: 'მოკითხვის შეტყობინება წარმატებით გაეგზავნა მომხმარებელს!' });
+});
+
 
   const updated = updateOrderStatus(id, status, notes || '');
   if (!updated) return res.status(404).json({ error: 'Order not found' });

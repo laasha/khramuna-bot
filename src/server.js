@@ -186,6 +186,7 @@ import {
 import { saveOrderToGoogleSheet } from './services/sheets.js';
 import { notifyTelegramOrder, notifyTelegramReceipt, notifyTelegramAlert } from './services/telegram.js';
 import { handleCommentAction, startCommentMonitor, checkNewComments } from './services/commentMonitor.js';
+import { checkAndSendPostDeliveryFollowUps } from './services/followUp.js';
 import { getOrders, getSession, getOrHydrateSession, getCustomerProfile, updateCustomerProfile, getUserLatestOrder, updateOrderStatus, pauseBotForUser, isBotPausedForUser, saveOrder, updateSession } from './services/storage.js';
 
 const PRODUCT_MAP = {

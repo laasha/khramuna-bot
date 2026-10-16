@@ -389,6 +389,9 @@ export function updateOrderStatus(orderId, status, extraNotes = '') {
   const order = orders.find((o) => o.id === orderId);
   if (order) {
     order.status = status;
+    if (status === 'DELIVERED' && !order.deliveredAt) {
+      order.deliveredAt = new Date().toISOString();
+    }
     if (extraNotes) {
       order.verificationNotes = extraNotes;
     }
@@ -452,6 +455,10 @@ export function updateOrder(orderId, updateFields = {}) {
   if (updateFields.status !== undefined) order.status = updateFields.status;
   if (updateFields.deliveryNotes !== undefined) order.deliveryNotes = updateFields.deliveryNotes;
   if (updateFields.petInfo !== undefined) order.petInfo = updateFields.petInfo;
+  if (updateFields.status === 'DELIVERED' && !order.deliveredAt) order.deliveredAt = new Date().toISOString();
+  if (updateFields.deliveredAt !== undefined) order.deliveredAt = updateFields.deliveredAt;
+  if (updateFields.followUpSent !== undefined) order.followUpSent = updateFields.followUpSent;
+  if (updateFields.followUpSentAt !== undefined) order.followUpSentAt = updateFields.followUpSentAt;
   order.updatedAt = new Date().toISOString();
 
   writeJsonFile(ORDERS_FILE, orders);
