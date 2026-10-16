@@ -688,14 +688,25 @@ app.post('/webhook', async (req, res) => {
 
           // Detect if message was sent manually by human page admin (echo event)
           if (webhookEvent.message?.is_echo) {
+            const mid = webhookEvent.message?.mid;
             const recipientPsid = webhookEvent.recipient?.id;
+            const lastBotSend = recipientPsid ? (recentBotSends.get(recipientPsid) || 0) : 0;
+            const isRecentBotSend = Date.now() - lastBotSend < 60000;
+
+            // If message was sent by our API/app or matches recent bot outgoing delivery, NEVER pause!
+            if (webhookEvent.message.app_id || (mid && recentBotMids.has(mid)) || isRecentBotSend) {
+              console.log(`[Echo] Bot outgoing message echoed back by Meta to ${recipientPsid}, ignoring without pause.`);
+              continue;
+            }
+
             const allowedRecipients = [
               process.env.FB_PAGE_ID || '928195650386088',
               process.env.IG_ACCOUNT_ID || '17841427052704939'
             ];
+            // Only pause if human admin explicitly typed in Meta Business Suite / Instagram inbox
             if (recipientPsid && !allowedRecipients.includes(recipientPsid)) {
-              console.log(`[Human Takeover] Admin manually replied to ${recipientPsid}. Pausing bot for 60 minutes.`);
-              pauseBotForUser(recipientPsid, 60);
+              console.log(`[Human Takeover] Admin manually replied in inbox to ${recipientPsid}. Pausing bot for 30 minutes.`);
+              pauseBotForUser(recipientPsid, 30);
             }
             continue;
           }
@@ -817,7 +828,7 @@ app.post('/webhook', async (req, res) => {
               const product = PRODUCT_MAP[productKey];
 
               if (product) {
-                const session = await getOrHydrateSession(senderPsid);
+                const session = await getOrHydrateSession(senderPsid, body.object === 'instagram' ? 'instagram' : 'messenger');
                 updateSession(senderPsid, 'user', `ავირჩიე შეკვეთა: ${product.name}`);
 
                 let confirmText = '';
@@ -1021,7 +1032,7 @@ app.post('/webhook', async (req, res) => {
             if (audioAttachment && audioAttachment.payload?.url) {
               const audioUrl = audioAttachment.payload.url;
               console.log(`[Messenger] Processing voice note from ${senderPsid}:`, audioUrl);
-              const session = await getOrHydrateSession(senderPsid);
+              const session = await getOrHydrateSession(senderPsid, body.object === 'instagram' ? 'instagram' : 'messenger');
               await sendSenderAction(senderPsid, 'typing_on').catch(() => {});
 
               try {
@@ -1058,7 +1069,7 @@ app.post('/webhook', async (req, res) => {
             // Handle Stickers, thumbs up, videos or other non-text attachments (prevent ghosting)
             if (!message.text && !message.attachments.some(a => a.type === 'image')) {
               console.log(`[Messenger] Received non-image/non-audio attachment (sticker/like/media) from ${senderPsid}`);
-              const session = await getOrHydrateSession(senderPsid);
+              const session = await getOrHydrateSession(senderPsid, body.object === 'instagram' ? 'instagram' : 'messenger');
               const sessionHistory = session.history || [];
               if (sessionHistory.length > 0) {
                 // If conversation is already active or closed, acknowledge with warm emoji without restarting sales pitch
@@ -1086,7 +1097,7 @@ app.post('/webhook', async (req, res) => {
             const userText = debounced.combinedText;
             console.log(`[Messenger] Processing aggregated message from ${senderPsid}: "${userText}"`);
 
-            const session = await getOrHydrateSession(senderPsid);
+            const session = await getOrHydrateSession(senderPsid, body.object === 'instagram' ? 'instagram' : 'messenger');
             updateSession(senderPsid, 'user', userText);
 
             // Fast-path: Common courtesies (instant, warm, human, zero API overhead)

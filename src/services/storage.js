@@ -144,20 +144,33 @@ const memorySessions = new Map();
  * Hydrates conversation history directly from Meta Graph API for zero-cost long-term memory.
  * Overcomes Vercel serverless cold starts and recovers context across days of silence.
  */
-export async function hydrateSessionFromMeta(userId) {
+export async function hydrateSessionFromMeta(userId, platform = null) {
   const token = process.env.FB_PAGE_ACCESS_TOKEN;
   const pageId = process.env.FB_PAGE_ID || '928195650386088';
+  const igAccountId = process.env.IG_ACCOUNT_ID || '17841427052704939';
   if (!token || !userId) return { history: [], lastActivity: Date.now() };
 
   try {
-    const url = `https://graph.facebook.com/v20.0/${pageId}/conversations?user_id=${userId}&fields=id,messages.limit(15){message,from,created_time}&access_token=${token}`;
-    const res = await fetch(url);
-    if (!res.ok) {
-      console.warn(`[Storage] Meta hydration HTTP ${res.status} for user ${userId}`);
-      return { history: [], lastActivity: Date.now() };
+    let rawMessages = null;
+    const isInstagram = platform === 'instagram' || String(userId).length >= 16;
+
+    // 1. Primary hydration request
+    const url1 = isInstagram
+      ? `https://graph.facebook.com/v20.0/${pageId}/conversations?platform=instagram&user_id=${userId}&fields=id,messages.limit(15){message,from,created_time}&access_token=${token}`
+      : `https://graph.facebook.com/v20.0/${pageId}/conversations?user_id=${userId}&fields=id,messages.limit(15){message,from,created_time}&access_token=${token}`;
+
+    let res = await fetch(url1);
+    let json = res.ok ? await res.json() : null;
+    rawMessages = json?.data?.[0]?.messages?.data;
+
+    // 2. Fallback to alternative platform if empty
+    if ((!Array.isArray(rawMessages) || rawMessages.length === 0) && !isInstagram) {
+      const url2 = `https://graph.facebook.com/v20.0/${pageId}/conversations?platform=instagram&user_id=${userId}&fields=id,messages.limit(15){message,from,created_time}&access_token=${token}`;
+      res = await fetch(url2);
+      json = res.ok ? await res.json() : null;
+      rawMessages = json?.data?.[0]?.messages?.data;
     }
-    const json = await res.json();
-    const rawMessages = json.data?.[0]?.messages?.data;
+
     if (!Array.isArray(rawMessages) || rawMessages.length === 0) {
       return { history: [], lastActivity: Date.now() };
     }
@@ -167,7 +180,9 @@ export async function hydrateSessionFromMeta(userId) {
       .slice()
       .reverse()
       .map((m) => {
-        const isAssistant = m.from?.id === pageId;
+        const senderId = m.from?.id;
+        const senderUsername = m.from?.username;
+        const isAssistant = senderId === pageId || senderId === igAccountId || senderUsername === 'khramuna_snacks';
         const text = m.message ? m.message.trim() : '[მედია/სურათი]';
         return {
           role: isAssistant ? 'assistant' : 'user',
@@ -201,7 +216,7 @@ export async function hydrateSessionFromMeta(userId) {
 /**
  * Retrieves customer session, actively hydrating from Meta if local cache is cold/empty.
  */
-export async function getOrHydrateSession(userId) {
+export async function getOrHydrateSession(userId, platform = null) {
   if (memorySessions.has(userId)) {
     const s = memorySessions.get(userId);
     if (s.history && s.history.length > 0) return s;
@@ -213,7 +228,7 @@ export async function getOrHydrateSession(userId) {
   }
 
   // Cold start on Vercel serverless -> Hydrate from Meta Graph API
-  const hydrated = await hydrateSessionFromMeta(userId);
+  const hydrated = await hydrateSessionFromMeta(userId, platform);
   return hydrated;
 }
 

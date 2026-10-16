@@ -1,3 +1,5 @@
+export const recentBotMids = new Set();
+export const recentBotSends = new Map();
 /**
  * Meta Graph API service for Facebook Messenger & Instagram Messaging.
  */
