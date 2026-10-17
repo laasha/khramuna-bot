@@ -230,3 +230,13 @@
 - [2026-10-17] Conversion & UX: Eliminated synthetic AI product renders and carousels in favor of platform-aware native redirection (IG profile vs FB page); disabled robotic quick-reply pills and enforced strict zero-premature checkout to prevent customer bounce.
 - [2026-10-17] D2C Growth & Retention: Added Ghost Recovery check-in for abandoned carts (3-24h window), 100% taste guarantee risk-reversal for hesitation, and post-order UGC story bonus flywheel to drive social proof.
 - [2026-10-17] D2C Unit Economics & Offer Architecture: Irresistible Grand Slam offer anchored on 'სრული სადეგუსტაციო ნაკრები' (49.50 GEL + free delivery + 100% taste replacement guarantee) to maximize AOV (30.50 GEL gross margin per order) while strictly protecting single-pack economics (courier fee of 5 GEL enforced for orders <45 GEL to prevent margin loss).
+
+- [2026-10-17] Human Takeover Guard & Instant Phone Alert:
+  1) Human Page Admin Echo: Echo events in server.js now strictly differentiate between bot API sends (tracked in recentBotMids) and human manual replies in Meta Business Suite / Instagram Inbox. Any manual message from founder/admin now instantly triggers pauseBotForUser(recipientPsid, 120) so bot NEVER interrupts manual conversation.
+  2) Instant Lead Phone Alert: Any customer message containing a 9-digit Georgian mobile number (5xx xx xx xx) immediately fires notifyTelegramAlert to Telegram with customer name, clickable Business Suite link, and raw phone, preventing silent order drops during custom handovers.
+  3) Verified Raw Material Wholesale Costs & Production Economics:
+     • 1 kg Beef Liver (ღვიძლი): 15.00 GEL (Super-Kube 80g pack = ~270g raw = 4.05 GEL raw cost, retail 17 GEL -> 71% margin).
+     • 1 kg Beef Lung (ფილტვი): 5.00 GEL (Ghrubeli 50g pack = ~250g raw = 1.25 GEL raw cost, retail 15 GEL -> 86% margin).
+     • 1 kg Chicken Feet (თათები): 2.50 GEL (Thatebi 100g pack = ~250g raw = 0.63 GEL raw cost, retail 18 GEL -> 92% margin).
+     • Magic Powder (40g): 50/50 mix (~1.48 GEL raw cost, retail 12 GEL -> 79% margin).
+     • Full Pack (4 products): Total raw material 7.41 GEL + packaging ~3.40 GEL + courier 5.00 GEL = 15.81 GEL total COGS. Retail 49.50 GEL -> Net profit per order 33.69 GEL (68% margin).

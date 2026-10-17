@@ -695,9 +695,9 @@ app.post('/webhook', async (req, res) => {
             const lastBotSend = recipientPsid ? (recentBotSends.get(recipientPsid) || 0) : 0;
             const isRecentBotSend = Date.now() - lastBotSend < 60000;
 
-            // If message was sent by our API/app or matches recent bot outgoing delivery, NEVER pause!
-            if (webhookEvent.message.app_id || (mid && recentBotMids.has(mid)) || isRecentBotSend) {
-              console.log(`[Echo] Bot outgoing message echoed back by Meta to ${recipientPsid}, ignoring without pause.`);
+            // If message was sent by our bot's explicit send call, ignore without pause
+            if (mid && recentBotMids.has(mid)) {
+              console.log(`[Echo] Bot outgoing message echoed back by Meta to ${recipientPsid}, ignoring.`);
               continue;
             }
 
@@ -705,10 +705,10 @@ app.post('/webhook', async (req, res) => {
               process.env.FB_PAGE_ID || '928195650386088',
               process.env.IG_ACCOUNT_ID || '17841427052704939'
             ];
-            // Only pause if human admin explicitly typed in Meta Business Suite / Instagram inbox
+            // If human admin manually typed in Meta Business Suite or Instagram Inbox, PAUSE BOT IMMEDIATELY!
             if (recipientPsid && !allowedRecipients.includes(recipientPsid)) {
-              console.log(`[Human Takeover] Admin manually replied in inbox to ${recipientPsid}. Pausing bot for 30 minutes.`);
-              pauseBotForUser(recipientPsid, 30);
+              console.log(`[Human Takeover] Admin manually replied in inbox to ${recipientPsid}. Pausing bot for 120 minutes.`);
+              pauseBotForUser(recipientPsid, 120);
             }
             continue;
           }
@@ -1101,6 +1101,22 @@ app.post('/webhook', async (req, res) => {
 
             const session = await getOrHydrateSession(senderPsid, body.object === 'instagram' ? 'instagram' : 'messenger');
             updateSession(senderPsid, 'user', userText);
+
+            // Instant Lead Alert: detect if incoming message contains a 9-digit Georgian phone number
+            const phoneMatch = userText.match(/(?:(?:\+?995)?[ -]?)?(5\d{2}[ -]?\d{2}[ -]?\d{2}[ -]?\d{2})/);
+            if (phoneMatch) {
+              const rawDigits = phoneMatch[1].replace(/[\s-]/g, '');
+              if (rawDigits.length === 9) {
+                const profile = getCustomerProfile(senderPsid);
+                const custName = profile?.name || session?.userName || 'კლიენტი';
+                const platformLabel = body.object === 'instagram' ? 'Instagram' : 'Facebook Messenger';
+                console.log(`[Lead Alert] Detected phone number ${rawDigits} from ${custName} (${senderPsid}). Sending Telegram alert.`);
+                notifyTelegramAlert(
+                  '📞 *ახალი ტელეფონის ნომერი (Hot Lead / შეკვეთა)!*',
+                  `👤 *მომხმარებელი:* ${custName} (${platformLabel})\n📱 *ტელეფონი:* \`${rawDigits}\`\n💬 *შეტყობინება:* "${userText}"\n🔗 [გახსენით Meta Business Suite](https://business.facebook.com/latest/inbox/)`
+                ).catch(err => console.error('[Lead Alert Error]:', err.message));
+              }
+            }
 
             // Fast-path: Common courtesies (instant, warm, human, zero API overhead)
             const cleanText = userText.toLowerCase().replace(/[.,!?;:()]/g, '').trim();
