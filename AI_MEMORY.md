@@ -228,3 +228,4 @@
 
 - [2026-10-17] Webhooks & Meta Graph: Meta echo events (is_echo: true) must check message.app_id, outgoing MID sets, and recentBotSends before pausing bot; Instagram conversation hydration requires platform=instagram in Meta Graph API query.
 - [2026-10-17] Conversion & UX: Eliminated synthetic AI product renders and carousels in favor of platform-aware native redirection (IG profile vs FB page); disabled robotic quick-reply pills and enforced strict zero-premature checkout to prevent customer bounce.
+- [2026-10-17] D2C Growth & Retention: Added Ghost Recovery check-in for abandoned carts (3-24h window), 100% taste guarantee risk-reversal for hesitation, and post-order UGC story bonus flywheel to drive social proof.
