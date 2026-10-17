@@ -50,6 +50,8 @@ function enqueueUserMessage(senderPsid, text) {
 import 'dotenv/config';
 
 export function getContextualQuickReplies(text) {
+  // Pure human conversation mode: completely disabled to avoid robotic chatbot pills
+  return null;
   if (!text || typeof text !== 'string') return null;
   const clean = text.toLowerCase();
 
@@ -1213,34 +1215,17 @@ app.post('/webhook', async (req, res) => {
               continue;
             }
 
-            // Photo / Visual requests fast-path (Only when customer specifically requests a photo/image!)
+            // Photo / Visual requests fast-path (Option A: Platform-aware native redirection, ZERO AI renders)
             const isExplicitPhotoRequest = (cleanText.includes('ფოტო') || cleanText.includes('სურათ') || cleanText.includes('როგორ გამოიყურება') || cleanText.includes('მაჩვენ') || cleanText.includes('ჩამიგდ') || cleanText.includes('რომ ჩამიგდოთ')) &&
               !cleanText.includes('შეკვეთ') && !cleanText.includes('მინდა შეკვეთა') && !cleanText.includes('ყიდვა');
             if (isExplicitPhotoRequest) {
-              const histLast = (session.history || []).slice(-4).map(m => m.text).join(' ');
-              const mentionsLung = cleanText.includes('ღრუბ') || cleanText.includes('ფილტვ') || histLast.includes('ღრუბელი') || histLast.includes('ფილტვი');
-              const mentionsLiver = cleanText.includes('კუბ') || cleanText.includes('ღვიძლ') || histLast.includes('კუბები') || histLast.includes('ღვიძლი');
-              const mentionsPaws = cleanText.includes('თათ') || cleanText.includes('დრაკონ') || cleanText.includes('ქათამ') || histLast.includes('თათები') || histLast.includes('ქათმის');
-              const mentionsPowder = cleanText.includes('პუდრ') || cleanText.includes('ფხვნილ') || histLast.includes('პუდრა');
+              const isInstagram = body.object === 'instagram' || String(senderPsid).length >= 16;
+              const photoReply = isInstagram
+                ? 'ჩვენი 100% ნატურალური სასუსნავების და კმაყოფილი ცუგების რეალური ვიდეოები და ფოტოები შეგიძლიათ ნახოთ პირდაპირ ჩვენს Instagram პროფილზე და პოსტებში 🐾\n\nაქ კი სიამოვნებით მოგიყვებით ნებისმიერ დეტალზე ან შეგარჩევინებთ თქვენი პატარასთვის ❤️ რომელი პროდუქტი ან თქვენი ცუგას რა თვისება გაინტერესებთ?'
+                : 'ჩვენი 100% ნატურალური სასუსნავების და კმაყოფილი ცუგების რეალური ვიდეოები და ფოტოები შეგიძლიათ ნახოთ პირდაპირ ჩვენს Facebook გვერდზე და პოსტებში 🐾\n\nაქ კი სიამოვნებით მოგიყვებით ნებისმიერ დეტალზე ან შეგარჩევინებთ თქვენი პატარასთვის ❤️ რომელი პროდუქტი ან თქვენი ცუგას რა თვისება გაინტერესებთ?';
 
-              if (mentionsLung && !mentionsLiver && !mentionsPaws && !mentionsPowder) {
-                await sendMessengerImage(senderPsid, `${BASE_HOST}/images/ghrubeli_v3.jpg`);
-                await sendMessengerMessage(senderPsid, 'ესეც ჩვენი 100% ნატურალური საქონლის ფილტვი — „ღრუბელი“ (50გ) 🐾 ჰაეროვანი, დაბალკალორიული და იდეალური წვრთნისთვის.');
-              } else if (mentionsLiver && !mentionsLung && !mentionsPaws && !mentionsPowder) {
-                await sendMessengerImage(senderPsid, `${BASE_HOST}/images/kubebi_v3.jpg`);
-                await sendMessengerMessage(senderPsid, 'ესეც ჩვენი 100% საქონლის ღვიძლის „სუპერ-კუბები“ (80გ) 🐾 ვიტამინებით სავსე, ძლიერი და მიმზიდველი არომატით.');
-              } else if (mentionsPaws && !mentionsLung && !mentionsLiver && !mentionsPowder) {
-                await sendMessengerImage(senderPsid, `${BASE_HOST}/images/tathebi_v3.jpg`);
-                await sendMessengerMessage(senderPsid, 'ესეც ჩვენი „დრაკონის თათები“ (100გ) — 100% ქათმის ფეხი 🐾 ბუნებრივი კოლაგენი სახსრებისა და კბილების გასაწმენდად.');
-              } else if (mentionsPowder && !mentionsLung && !mentionsLiver && !mentionsPaws) {
-                await sendMessengerImage(senderPsid, `${BASE_HOST}/images/pudra_v3.jpg`);
-                await sendMessengerMessage(senderPsid, 'ესეც „ჯადოსნური პუდრა“ (40გ) — 100% საქონლის გამომშრალი ღვიძლი და ფილტვი 🐾 მადისაღმძვრელი ბუნებრივი ტოპინგი.');
-              } else {
-                await sendMessengerImage(senderPsid, `${BASE_HOST}/images/full_pack_v5.jpg`);
-                await sendMessengerMessage(senderPsid, 'გაეცანით ჩვენს ნატურალურ ასორტიმენტს 🐾 ქვემოთ შეგიძლიათ დეტალურადაც დაათვალიეროთ:');
-                await sendProductCatalog(senderPsid);
-              }
-              updateSession(senderPsid, 'assistant', 'გაიგზავნა პროდუქციის ფოტო');
+              await sendMessengerMessage(senderPsid, photoReply);
+              updateSession(senderPsid, 'assistant', photoReply);
               continue;
             }
 
