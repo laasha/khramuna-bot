@@ -227,3 +227,4 @@
     - `full_pack` / `ნაკრებ`: ხვდება სრული ოთხეულის 20%-იანი ეკონომიის შეთავაზებით.
 
 - [2026-10-17] Webhooks & Meta Graph: Meta echo events (is_echo: true) must check message.app_id, outgoing MID sets, and recentBotSends before pausing bot; Instagram conversation hydration requires platform=instagram in Meta Graph API query.
+- [2026-10-17] Conversion & UX: Eliminated synthetic AI product renders and carousels in favor of platform-aware native redirection (IG profile vs FB page); disabled robotic quick-reply pills and enforced strict zero-premature checkout to prevent customer bounce.
