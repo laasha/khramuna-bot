@@ -187,7 +187,7 @@ import {
 import { saveOrderToGoogleSheet } from './services/sheets.js';
 import { notifyTelegramOrder, notifyTelegramReceipt, notifyTelegramAlert, generateDailyReport, generateCourierDispatchList } from './services/telegram.js';
 import { handleCommentAction, startCommentMonitor, checkNewComments } from './services/commentMonitor.js';
-import { checkAndSendPostDeliveryFollowUps } from './services/followUp.js';
+import { checkAndSendPostDeliveryFollowUps, checkAndRecoverGhostConversations } from './services/followUp.js';
 import { getOrders, getSession, getOrHydrateSession, getCustomerProfile, updateCustomerProfile, getUserLatestOrder, updateOrderStatus, pauseBotForUser, isBotPausedForUser, saveOrder, updateSession } from './services/storage.js';
 
 const PRODUCT_MAP = {
@@ -1292,6 +1292,13 @@ app.post('/webhook', async (req, res) => {
                 } catch (tgErr) {
                   console.error('[Telegram Non-blocking Error]:', tgErr.message);
                 }
+
+                // Global Best Practice #2: UGC Story Flywheel Bonus
+                const isInstagramUser = body.object === 'instagram' || String(senderPsid).length >= 16;
+                const ugcStoryBonus = isInstagramUser
+                  ? '\n\n🐾 პატარა საჩუქარი ჩვენგან: როცა ამანათს მიიღებთ, თუ თქვენს ცუგას ჩვენს სასუსნავთან ერთად გადაუღებთ მოკლე ვიდეოს/სთორის და დაგვთაგავთ Instagram-ზე (@khramuna_snacks), მომდევნო შეკვეთაზე უფასო მიტანას ან 10%-იან ფასდაკლებას გაჩუქებთ! ❤️'
+                  : '\n\n🐾 პატარა საჩუქარი ჩვენგან: როცა ამანათს მიიღებთ, თუ თქვენს ცუგას ჩვენს სასუსნავთან ერთად გადაუღებთ მოკლე ვიდეოს/სთორის და დაგვთაგავთ Facebook-ზე (@khramuna), მომდევნო შეკვეთაზე უფასო მიტანას ან 10%-იან ფასდაკლებას გაჩუქებთ! ❤️';
+                aiResponse.replyText = (aiResponse.replyText || '') + ugcStoryBonus;
               } else {
                 // SILENT ORDER DROP RESCUE: Never tell user order is confirmed if validation fails!
                 console.warn('[Messenger Guard] Order blocked by validation guard:', aiResponse.order);
@@ -1382,7 +1389,27 @@ app.post('/webhook', async (req, res) => {
 });
 
 if (process.env.VERCEL !== '1') {
-  app.listen(PORT, () => {
+  
+/**
+ * Cron trigger for post-delivery care and ghost conversation recovery
+ */
+app.get('/api/cron/followups', async (req, res) => {
+  try {
+    const postDeliveryCount = await checkAndSendPostDeliveryFollowUps();
+    const ghostRecoveryCount = await checkAndRecoverGhostConversations();
+    res.json({
+      success: true,
+      postDeliveryCount,
+      ghostRecoveryCount,
+      timestamp: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error('[Cron FollowUps Error]:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.listen(PORT, () => {
     console.log(`===============================================`);
     console.log(`🐾 ხრამუნას ავტომატიზაციის სერვერი ჩაირთო პორტზე: ${PORT}`);
     console.log(`👉 Webhook URL: http://localhost:${PORT}/webhook`);

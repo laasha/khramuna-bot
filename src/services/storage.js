@@ -268,6 +268,37 @@ export function updateSession(userId, role, text) {
   }
 }
 
+
+/**
+ * Retrieves all stored conversation sessions across memory and disk.
+ */
+export function getAllSessions() {
+  const sessions = readJsonFile(SESSIONS_FILE, {});
+  for (const [id, mem] of memorySessions.entries()) {
+    if (!sessions[id]) {
+      sessions[id] = mem;
+    } else if (mem.lastActivity > (sessions[id].lastActivity || 0)) {
+      sessions[id] = mem;
+    }
+  }
+  return sessions;
+}
+
+/**
+ * Persists updated sessions map to disk and memory.
+ */
+export function saveSessions(sessions) {
+  if (!sessions || typeof sessions !== 'object') return;
+  for (const [id, sess] of Object.entries(sessions)) {
+    memorySessions.set(id, sess);
+  }
+  try {
+    writeJsonFile(SESSIONS_FILE, sessions);
+  } catch (err) {
+    console.error('[Storage] Error saving sessions:', err.message);
+  }
+}
+
 const REPLIED_COMMENTS_FILE = path.join(DATA_DIR, 'replied_comments.json');
 
 /**
